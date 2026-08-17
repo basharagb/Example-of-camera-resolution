@@ -8,6 +8,22 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Live streaming. INTERNET is only injected automatically into debug
+         builds, so a release build without it cannot reach the API at all. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <!-- Required by the RTC engine to route audio and to switch to a headset. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- The camera is required for broadcasting but not for watching, so the
+         feature is declared optional to keep the app installable on devices
+         without one. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <application
         android:label="Bashar Camera"
         android:name="${applicationName}"
