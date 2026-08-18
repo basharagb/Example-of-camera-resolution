@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import 'core/theme/live_theme.dart';
+import 'core/config/app_config.dart';
 import 'features/live/presentation/bindings/live_bindings.dart';
 import 'routes/app_pages.dart';
 import 'routes/app_routes.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppConfig.initializeEndpoint();
   await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
     DeviceOrientation.portraitUp,
   ]);

@@ -167,14 +167,18 @@ class _LiveFeedPage extends StatelessWidget {
                                 stream.host.displayName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: LiveTextStyles.title.copyWith(fontSize: 19),
+                                style: LiveTextStyles.title.copyWith(
+                                  fontSize: 19,
+                                ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 '@${stream.host.username}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: LiveTextStyles.caption.copyWith(fontSize: 12.5),
+                                style: LiveTextStyles.caption.copyWith(
+                                  fontSize: 12.5,
+                                ),
                               ),
                             ],
                           ),
@@ -260,7 +264,10 @@ class _LiveFeedPage extends StatelessWidget {
                 const LivePill(),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.42),
                     borderRadius: BorderRadius.circular(6),
@@ -394,13 +401,16 @@ class _TopBar extends StatelessWidget {
           ),
           const Spacer(),
           GestureDetector(
-            onTap: () => CoinTopUpSheet.show(context: context, session: session),
+            onTap: () =>
+                CoinTopUpSheet.show(context: context, session: session),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.42),
                 borderRadius: BorderRadius.circular(LiveMetrics.pillRadius),
-                border: Border.all(color: LiveColors.coin.withValues(alpha: 0.45)),
+                border: Border.all(
+                  color: LiveColors.coin.withValues(alpha: 0.45),
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -458,30 +468,70 @@ class _TopBar extends StatelessWidget {
   );
 }
 
-class _GoLiveButton extends StatelessWidget {
+class _GoLiveButton extends StatefulWidget {
+  @override
+  State<_GoLiveButton> createState() => _GoLiveButtonState();
+}
+
+class _GoLiveButtonState extends State<_GoLiveButton> {
+  bool _opening = false;
+
+  Future<void> _open() async {
+    if (_opening) return;
+    setState(() => _opening = true);
+    HapticFeedback.mediumImpact();
+    try {
+      await Get.toNamed<void>(AppRoutes.goLive);
+    } finally {
+      if (mounted) setState(() => _opening = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Positioned(
     right: 18,
     bottom: MediaQuery.of(context).padding.bottom + 250,
-    child: GestureDetector(
-      onTap: () => Get.toNamed<void>(AppRoutes.goLive),
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            colors: <Color>[Color(0xFFFF365E), Color(0xFFFF7A3D)],
-          ),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: LiveColors.live.withValues(alpha: 0.5),
-              blurRadius: 20,
-              spreadRadius: 1,
+    child: Semantics(
+      button: true,
+      label: 'Go live',
+      child: GestureDetector(
+        onTap: _opening ? null : _open,
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: <Color>[Color(0xFFFF365E), Color(0xFFFF7A3D)],
             ),
-          ],
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: LiveColors.live.withValues(alpha: 0.5),
+                blurRadius: 20,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 160),
+            child: _opening
+                ? const SizedBox(
+                    key: ValueKey<String>('opening'),
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(
+                    Icons.videocam_rounded,
+                    key: ValueKey<String>('camera'),
+                    color: Colors.white,
+                    size: 27,
+                  ),
+          ),
         ),
-        child: const Icon(Icons.videocam_rounded, color: Colors.white, size: 27),
       ),
     ),
   );

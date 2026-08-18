@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/theme/live_theme.dart';
@@ -39,6 +40,8 @@ class _GoLivePageState extends State<GoLivePage> {
     if (title.isEmpty) {
       return;
     }
+    HapticFeedback.mediumImpact();
+    FocusManager.instance.primaryFocus?.unfocus();
     // Replaces this route so backing out of the room lands on the feed, not
     // back on the setup screen.
     Get.offNamed<void>(
@@ -93,7 +96,10 @@ class _GoLivePageState extends State<GoLivePage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: LiveColors.accent, width: 1.5),
+                    borderSide: const BorderSide(
+                      color: LiveColors.accent,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -107,7 +113,9 @@ class _GoLivePageState extends State<GoLivePage> {
                     backgroundColor: LiveColors.live,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(LiveMetrics.pillRadius),
+                      borderRadius: BorderRadius.circular(
+                        LiveMetrics.pillRadius,
+                      ),
                     ),
                   ),
                   onPressed: _start,
@@ -174,7 +182,9 @@ class _ChecklistRow extends StatelessWidget {
     children: <Widget>[
       Icon(icon, size: 17, color: LiveColors.accent),
       const SizedBox(width: 11),
-      Expanded(child: Text(text, style: LiveTextStyles.caption.copyWith(fontSize: 12))),
+      Expanded(
+        child: Text(text, style: LiveTextStyles.caption.copyWith(fontSize: 12)),
+      ),
     ],
   );
 }

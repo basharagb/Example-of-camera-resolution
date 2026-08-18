@@ -95,7 +95,8 @@ class LiveRoomController extends GetxController {
 
   // ---- room content ----
   final RxList<ChatMessageEntity> messages = <ChatMessageEntity>[].obs;
-  final RxList<LeaderboardEntryEntity> topGifters = <LeaderboardEntryEntity>[].obs;
+  final RxList<LeaderboardEntryEntity> topGifters =
+      <LeaderboardEntryEntity>[].obs;
   final RxList<GiftEntity> gifts = <GiftEntity>[].obs;
   final RxInt viewerCount = 0.obs;
 
@@ -189,7 +190,8 @@ class LiveRoomController extends GetxController {
   /// this refuses to open the room rather than going live with a black frame.
   Future<bool> _ensureBroadcastPermissions() async {
     final PermissionStatusEntity camera = await requestCameraPermission();
-    final PermissionStatusEntity microphone = await requestMicrophonePermission();
+    final PermissionStatusEntity microphone =
+        await requestMicrophonePermission();
 
     if (camera.isUsable && microphone.isUsable) {
       return true;
@@ -221,7 +223,10 @@ class LiveRoomController extends GetxController {
       isVideoReady.value = true;
       return;
     }
-    await mediaEngine.initialize(credentials.appId);
+    final String serverUrl = AppConfig.isUsingLocalEndpoint
+        ? credentials.localServerUrl
+        : credentials.serverUrl;
+    await mediaEngine.initialize(serverUrl);
     if (isHost) {
       await mediaEngine.joinAsHost(credentials);
       isVideoReady.value = true;
@@ -278,8 +283,9 @@ class LiveRoomController extends GetxController {
       case LiveEvents.giftReceived:
         final GiftEventEntity gift = GiftEventModel.fromJson(event.payload);
         giftQueue.add(QueuedGift(gift));
-        final Map<String, dynamic> totals =
-            LiveModelParsers.asMap(event.payload['streamTotals']);
+        final Map<String, dynamic> totals = LiveModelParsers.asMap(
+          event.payload['streamTotals'],
+        );
         if (totals.isNotEmpty) {
           totalCoins.value = LiveModelParsers.asInt(totals['totalCoins']);
         }
@@ -298,7 +304,10 @@ class LiveRoomController extends GetxController {
         // double every tap.
         if (LiveModelParsers.asString(event.payload['senderId']) !=
             session.user.value?.id) {
-          heartBursts.value += LiveModelParsers.asInt(event.payload['count'], 1);
+          heartBursts.value += LiveModelParsers.asInt(
+            event.payload['count'],
+            1,
+          );
         }
 
       case LiveEvents.streamStats:
@@ -316,8 +325,9 @@ class LiveRoomController extends GetxController {
           event.payload['viewerCount'],
           viewerCount.value,
         );
-        final Map<String, dynamic> viewer =
-            LiveModelParsers.asMap(event.payload['viewer']);
+        final Map<String, dynamic> viewer = LiveModelParsers.asMap(
+          event.payload['viewer'],
+        );
         if (viewer.isNotEmpty) {
           final UserProfileEntity profile = UserProfileModel.fromJson(viewer);
           // Re-inserted rather than skipped when already present, so someone
@@ -348,11 +358,17 @@ class LiveRoomController extends GetxController {
           event.payload['viewerCount'],
           viewerCount.value,
         );
-        final String leftId = LiveModelParsers.asString(event.payload['viewerId']);
-        recentViewers.removeWhere((UserProfileEntity item) => item.id == leftId);
+        final String leftId = LiveModelParsers.asString(
+          event.payload['viewerId'],
+        );
+        recentViewers.removeWhere(
+          (UserProfileEntity item) => item.id == leftId,
+        );
 
       case LiveEvents.streamEnded:
-        final String endedId = LiveModelParsers.asString(event.payload['streamId']);
+        final String endedId = LiveModelParsers.asString(
+          event.payload['streamId'],
+        );
         if (currentId == null || endedId.isEmpty || endedId == currentId) {
           hasEnded.value = true;
           isLive.value = false;
@@ -473,7 +489,11 @@ class LiveRoomController extends GetxController {
     }
     try {
       final ({GiftEventEntity event, WalletEntity wallet}) result =
-          await sendGiftUseCase(streamId: id, giftCode: gift.code, quantity: quantity);
+          await sendGiftUseCase(
+            streamId: id,
+            giftCode: gift.code,
+            quantity: quantity,
+          );
       // The balance is applied straight away; the animation arrives for
       // everyone, sender included, over the socket.
       session.applyWalletUpdate(result.wallet);
@@ -504,7 +524,11 @@ class LiveRoomController extends GetxController {
       try {
         await mediaEngine.switchCamera();
       } catch (error, stackTrace) {
-        debugLog('Could not switch the local preview camera', error, stackTrace);
+        debugLog(
+          'Could not switch the local preview camera',
+          error,
+          stackTrace,
+        );
       } finally {
         // Rebuild with either the new controller or the explicit preview-failed
         // placeholder. Leaving this false would show a spinner forever.

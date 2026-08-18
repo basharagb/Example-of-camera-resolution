@@ -36,7 +36,7 @@ dependencies:
   permission_handler: ^13.0.0
   wakelock_plus: ^1.7.0
   device_info_plus: ^13.2.0
-  agora_rtc_engine: ^6.5.4
+  livekit_client: ^2.8.1
   dio: ^5.11.0
   flutter_secure_storage: ^11.0.0
   intl: ^0.20.3

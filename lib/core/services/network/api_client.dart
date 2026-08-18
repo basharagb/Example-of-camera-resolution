@@ -29,15 +29,16 @@ class ApiClient {
           ) {
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (RequestOptions options, RequestInterceptorHandler handler) async {
-          if (options.extra['skipAuth'] != true) {
-            final String? token = await _tokenStorage.readAccessToken();
-            if (token != null) {
-              options.headers['Authorization'] = 'Bearer $token';
-            }
-          }
-          return handler.next(options);
-        },
+        onRequest:
+            (RequestOptions options, RequestInterceptorHandler handler) async {
+              if (options.extra['skipAuth'] != true) {
+                final String? token = await _tokenStorage.readAccessToken();
+                if (token != null) {
+                  options.headers['Authorization'] = 'Bearer $token';
+                }
+              }
+              return handler.next(options);
+            },
       ),
     );
   }
@@ -86,11 +87,26 @@ class ApiClient {
     required String path,
     required bool authenticated,
     bool isRetry = false,
+    bool isEndpointRetry = false,
   }) async {
     late final Response<dynamic> response;
     try {
       response = await request();
     } on DioException catch (error) {
+      if (!isEndpointRetry &&
+          AppConfig.isUsingLocalEndpoint &&
+          _isConnectionFailure(error)) {
+        AppConfig.usePublicEndpoint();
+        _dio.options.baseUrl = AppConfig.apiRoot;
+        debugLog('LAN backend unavailable; switched to public endpoint');
+        return _send(
+          request,
+          path: path,
+          authenticated: authenticated,
+          isRetry: isRetry,
+          isEndpointRetry: true,
+        );
+      }
       throw _mapTransportError(error, path);
     }
 
@@ -104,19 +120,37 @@ class ApiClient {
             ? data
             : <String, dynamic>{'value': data};
       }
-      throw ServerFailure('The server returned an unexpected response', payload);
+      throw ServerFailure(
+        'The server returned an unexpected response',
+        payload,
+      );
     }
 
     // One transparent refresh attempt, then give up and surface the failure.
     if (status == 401 && authenticated && !isRetry) {
       if (await _refreshSession()) {
-        return _send(request, path: path, authenticated: authenticated, isRetry: true);
+        return _send(
+          request,
+          path: path,
+          authenticated: authenticated,
+          isRetry: true,
+          isEndpointRetry: isEndpointRetry,
+        );
       }
       onSessionExpired?.call();
     }
 
     throw _mapApiError(status, payload);
   }
+
+  bool _isConnectionFailure(DioException error) => switch (error.type) {
+    DioExceptionType.connectionTimeout ||
+    DioExceptionType.sendTimeout ||
+    DioExceptionType.receiveTimeout ||
+    DioExceptionType.connectionError ||
+    DioExceptionType.unknown => true,
+    _ => false,
+  };
 
   Future<bool> _refreshSession() {
     return _pendingRefresh ??= _performRefresh().whenComplete(() {
@@ -136,9 +170,11 @@ class ApiClient {
         options: Options(extra: <String, dynamic>{'skipAuth': true}),
       );
       final dynamic payload = response.data;
-      if (response.statusCode == 200 && payload is Map && payload['success'] == true) {
-        final Map<String, dynamic> tokens =
-            (payload['data']['tokens'] as Map).cast<String, dynamic>();
+      if (response.statusCode == 200 &&
+          payload is Map &&
+          payload['success'] == true) {
+        final Map<String, dynamic> tokens = (payload['data']['tokens'] as Map)
+            .cast<String, dynamic>();
         await _tokenStorage.saveTokens(
           accessToken: tokens['accessToken'] as String,
           refreshToken: tokens['refreshToken'] as String,
@@ -165,7 +201,9 @@ class ApiClient {
       DioExceptionType.unknown => const NetworkFailure(
         'Cannot reach the server. Check your internet connection.',
       ),
-      DioExceptionType.cancel => const NetworkFailure('The request was cancelled'),
+      DioExceptionType.cancel => const NetworkFailure(
+        'The request was cancelled',
+      ),
       _ => ServerFailure(error.message ?? 'The request failed', error),
     };
   }
@@ -176,7 +214,8 @@ class ApiClient {
     Map<String, dynamic> details = const <String, dynamic>{};
 
     if (payload is Map && payload['error'] is Map) {
-      final Map<dynamic, dynamic> error = payload['error'] as Map<dynamic, dynamic>;
+      final Map<dynamic, dynamic> error =
+          payload['error'] as Map<dynamic, dynamic>;
       message = (error['message'] as String?) ?? message;
       code = (error['code'] as String?) ?? code;
       if (error['details'] is Map) {

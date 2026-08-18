@@ -1,6 +1,4 @@
-# Pinned rather than left to CocoaPods' default: the Agora SDK requires
-# iOS 12 or newer, and leaving it implicit made pod install guess on every
-# run and warn about it.
+# LiveKit and the high-quality camera pipeline target modern iOS APIs.
 platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.

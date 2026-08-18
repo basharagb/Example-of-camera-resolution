@@ -1,10 +1,9 @@
-import 'package:agora_rtc_engine/agora_rtc_engine.dart';
-import 'package:camera/camera.dart' as camera;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:livekit_client/livekit_client.dart';
 
 import '../../../../core/theme/live_theme.dart';
-import '../../data/datasources/agora_media_engine.dart';
+import '../../data/datasources/livekit_media_engine.dart';
 import '../../domain/entities/live_entities.dart';
 import '../controllers/live_room_controller.dart';
 
@@ -35,21 +34,20 @@ class LiveVideoSurface extends StatelessWidget {
             return const _LoadingSurface(label: 'Starting camera');
           }
 
-          final camera.CameraController? preview =
-              (controller.mediaEngine is AgoraMediaEngine)
-              ? (controller.mediaEngine as AgoraMediaEngine)
-                    .localPreviewController
+          final LocalVideoTrack? preview =
+              (controller.mediaEngine is LiveKitMediaEngine)
+              ? (controller.mediaEngine as LiveKitMediaEngine).localVideoTrack
               : null;
-          if (preview != null && preview.value.isInitialized) {
+          if (preview != null) {
             return _MockHostSurface(preview: preview);
           }
         }
         return _MockSurface(controller: controller);
       }
 
-      final RtcEngine? engine =
-          (controller.mediaEngine is AgoraMediaEngine)
-          ? (controller.mediaEngine as AgoraMediaEngine).rawEngine
+      final LiveKitMediaEngine? engine =
+          (controller.mediaEngine is LiveKitMediaEngine)
+          ? controller.mediaEngine as LiveKitMediaEngine
           : null;
 
       if (engine == null) {
@@ -60,12 +58,10 @@ class LiveVideoSurface extends StatelessWidget {
         if (!controller.isCameraOn.value) {
           return const _CameraOffSurface();
         }
-        return AgoraVideoView(
-          controller: VideoViewController(
-            rtcEngine: engine,
-            canvas: const VideoCanvas(uid: 0),
-          ),
-        );
+        final LocalVideoTrack? track = engine.localVideoTrack;
+        return track == null
+            ? const _LoadingSurface(label: 'Starting camera')
+            : VideoTrackRenderer(track, fit: VideoViewFit.cover);
       }
 
       final int remoteUid = controller.hostRemoteUid.value;
@@ -73,13 +69,10 @@ class LiveVideoSurface extends StatelessWidget {
         return const _LoadingSurface(label: 'Connecting to the host');
       }
 
-      return AgoraVideoView(
-        controller: VideoViewController.remote(
-          rtcEngine: engine,
-          canvas: VideoCanvas(uid: remoteUid),
-          connection: RtcConnection(channelId: credentials.channelName),
-        ),
-      );
+      final RemoteVideoTrack? track = engine.remoteVideoTrack;
+      return track == null
+          ? const _LoadingSurface(label: 'Connecting to the host')
+          : VideoTrackRenderer(track, fit: VideoViewFit.cover);
     });
   }
 }
@@ -90,29 +83,13 @@ class LiveVideoSurface extends StatelessWidget {
 class _MockHostSurface extends StatelessWidget {
   const _MockHostSurface({required this.preview});
 
-  final camera.CameraController preview;
+  final LocalVideoTrack preview;
 
   @override
   Widget build(BuildContext context) => Stack(
     fit: StackFit.expand,
     children: <Widget>[
-      LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          final double previewRatio = 1 / preview.value.aspectRatio;
-          final double screenRatio =
-              constraints.maxWidth / constraints.maxHeight;
-          final double coverScale = previewRatio > screenRatio
-              ? previewRatio / screenRatio
-              : screenRatio / previewRatio;
-
-          return ClipRect(
-            child: Transform.scale(
-              scale: coverScale,
-              child: Center(child: camera.CameraPreview(preview)),
-            ),
-          );
-        },
-      ),
+      VideoTrackRenderer(preview, fit: VideoViewFit.cover),
       Positioned(
         left: 24,
         right: 24,
@@ -127,7 +104,7 @@ class _MockHostSurface extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               child: Text(
-                'Local preview only • Connect Agora to broadcast',
+                'Local preview only • Media server is not connected',
                 textAlign: TextAlign.center,
                 style: LiveTextStyles.caption.copyWith(fontSize: 10.5),
               ),
@@ -154,7 +131,10 @@ class _LoadingSurface extends StatelessWidget {
           const SizedBox(
             width: 34,
             height: 34,
-            child: CircularProgressIndicator(strokeWidth: 2.4, color: LiveColors.accent),
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              color: LiveColors.accent,
+            ),
           ),
           const SizedBox(height: 16),
           Text(label, style: LiveTextStyles.caption),
@@ -174,7 +154,11 @@ class _CameraOffSurface extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const Icon(Icons.videocam_off_rounded, size: 44, color: LiveColors.textMuted),
+          const Icon(
+            Icons.videocam_off_rounded,
+            size: 44,
+            color: LiveColors.textMuted,
+          ),
           const SizedBox(height: 12),
           Text('Your camera is off', style: LiveTextStyles.caption),
         ],
@@ -210,7 +194,10 @@ class _MockSurface extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: LiveColors.accent.withValues(alpha: 0.12),
-                border: Border.all(color: LiveColors.accent.withValues(alpha: 0.5), width: 2),
+                border: Border.all(
+                  color: LiveColors.accent.withValues(alpha: 0.5),
+                  width: 2,
+                ),
               ),
               alignment: Alignment.center,
               child: Text(
@@ -234,7 +221,7 @@ class _MockSurface extends StatelessWidget {
               child: Text(
                 controller.isHost
                     ? 'Camera preview could not start'
-                    : 'Live video needs Agora to be connected',
+                    : 'Live video server is not connected',
                 style: LiveTextStyles.caption.copyWith(fontSize: 11),
               ),
             ),

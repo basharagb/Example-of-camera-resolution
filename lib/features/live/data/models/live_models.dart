@@ -39,15 +39,19 @@ abstract final class LiveModelParsers {
 
   static List<Map<String, dynamic>> asMapList(Object? value) {
     if (value is! List) return const <Map<String, dynamic>>[];
-    return value.whereType<Map<Object?, Object?>>().map(
-      (Map<Object?, Object?> item) => item.cast<String, dynamic>(),
-    ).toList(growable: false);
+    return value
+        .whereType<Map<Object?, Object?>>()
+        .map((Map<Object?, Object?> item) => item.cast<String, dynamic>())
+        .toList(growable: false);
   }
 }
 
 extension UserProfileModel on UserProfileEntity {
   static UserProfileEntity fromJson(Map<String, dynamic> json) {
-    final String username = LiveModelParsers.asString(json['username'], 'guest');
+    final String username = LiveModelParsers.asString(
+      json['username'],
+      'guest',
+    );
     return UserProfileEntity(
       id: LiveModelParsers.asString(json['id']),
       username: username,
@@ -64,41 +68,51 @@ extension WalletModel on WalletEntity {
     coinBalance: LiveModelParsers.asInt(json['coinBalance']),
     diamondBalance: LiveModelParsers.asInt(json['diamondBalance']),
     lifetimeCoinsSpent: LiveModelParsers.asInt(json['lifetimeCoinsSpent']),
-    lifetimeDiamondsEarned: LiveModelParsers.asInt(json['lifetimeDiamondsEarned']),
+    lifetimeDiamondsEarned: LiveModelParsers.asInt(
+      json['lifetimeDiamondsEarned'],
+    ),
   );
 }
 
 extension LiveStreamModel on LiveStreamEntity {
-  static LiveStreamEntity fromJson(Map<String, dynamic> json) => LiveStreamEntity(
-    id: LiveModelParsers.asString(json['id']),
-    title: LiveModelParsers.asString(json['title']),
-    status: LiveModelParsers.asString(json['status']) == 'ended'
-        ? LiveStreamStatus.ended
-        : LiveStreamStatus.live,
-    viewerCount: LiveModelParsers.asInt(json['viewerCount']),
-    totalLikes: LiveModelParsers.asInt(json['totalLikes']),
-    totalCoins: LiveModelParsers.asInt(json['totalCoins']),
-    startedAt: LiveModelParsers.asDate(json['startedAt']),
-    host: UserProfileModel.fromJson(LiveModelParsers.asMap(json['host'])),
-    coverUrl: json['coverUrl'] as String?,
-    channelName: json['channelName'] as String?,
-    peakViewerCount: LiveModelParsers.asInt(json['peakViewerCount']),
-    totalGifts: LiveModelParsers.asInt(json['totalGifts']),
-    durationSeconds: LiveModelParsers.asInt(json['durationSeconds']),
-    endedAt: json['endedAt'] == null ? null : LiveModelParsers.asDate(json['endedAt']),
-  );
+  static LiveStreamEntity fromJson(Map<String, dynamic> json) =>
+      LiveStreamEntity(
+        id: LiveModelParsers.asString(json['id']),
+        title: LiveModelParsers.asString(json['title']),
+        status: LiveModelParsers.asString(json['status']) == 'ended'
+            ? LiveStreamStatus.ended
+            : LiveStreamStatus.live,
+        viewerCount: LiveModelParsers.asInt(json['viewerCount']),
+        totalLikes: LiveModelParsers.asInt(json['totalLikes']),
+        totalCoins: LiveModelParsers.asInt(json['totalCoins']),
+        startedAt: LiveModelParsers.asDate(json['startedAt']),
+        host: UserProfileModel.fromJson(LiveModelParsers.asMap(json['host'])),
+        coverUrl: json['coverUrl'] as String?,
+        channelName: json['channelName'] as String?,
+        peakViewerCount: LiveModelParsers.asInt(json['peakViewerCount']),
+        totalGifts: LiveModelParsers.asInt(json['totalGifts']),
+        durationSeconds: LiveModelParsers.asInt(json['durationSeconds']),
+        endedAt: json['endedAt'] == null
+            ? null
+            : LiveModelParsers.asDate(json['endedAt']),
+      );
 }
 
 extension RtcCredentialsModel on RtcCredentialsEntity {
-  static RtcCredentialsEntity fromJson(Map<String, dynamic> json) => RtcCredentialsEntity(
-    provider: LiveModelParsers.asString(json['provider'], 'mock'),
-    appId: LiveModelParsers.asString(json['appId']),
-    channelName: LiveModelParsers.asString(json['channelName']),
-    uid: LiveModelParsers.asInt(json['uid']),
-    token: LiveModelParsers.asString(json['token']),
-    role: LiveModelParsers.asString(json['role'], 'audience'),
-    expiresAt: LiveModelParsers.asDate(json['expiresAt']),
-  );
+  static RtcCredentialsEntity fromJson(Map<String, dynamic> json) =>
+      RtcCredentialsEntity(
+        provider: LiveModelParsers.asString(json['provider'], 'mock'),
+        serverUrl: LiveModelParsers.asString(json['serverUrl']),
+        localServerUrl: LiveModelParsers.asString(
+          json['localServerUrl'],
+          LiveModelParsers.asString(json['serverUrl']),
+        ),
+        channelName: LiveModelParsers.asString(json['channelName']),
+        uid: LiveModelParsers.asInt(json['uid']),
+        token: LiveModelParsers.asString(json['token']),
+        role: LiveModelParsers.asString(json['role'], 'audience'),
+        expiresAt: LiveModelParsers.asDate(json['expiresAt']),
+      );
 }
 
 extension GiftModel on GiftEntity {
@@ -108,13 +122,19 @@ extension GiftModel on GiftEntity {
       id: LiveModelParsers.asString(json['id']),
       code: LiveModelParsers.asString(json['code']),
       name: LiveModelParsers.asString(json['name']),
-      nameAr: LiveModelParsers.asString(json['nameAr'], LiveModelParsers.asString(json['name'])),
+      nameAr: LiveModelParsers.asString(
+        json['nameAr'],
+        LiveModelParsers.asString(json['name']),
+      ),
       coinCost: LiveModelParsers.asInt(json['coinCost']),
       tier: GiftTier.values.firstWhere(
         (GiftTier value) => value.name == tier,
         orElse: () => GiftTier.basic,
       ),
-      animationDurationMs: LiveModelParsers.asInt(json['animationDurationMs'], 2000),
+      animationDurationMs: LiveModelParsers.asInt(
+        json['animationDurationMs'],
+        2000,
+      ),
       iconUrl: json['iconUrl'] as String?,
       animationAsset: json['animationAsset'] as String?,
     );
@@ -135,7 +155,10 @@ extension GiftEventModel on GiftEventEntity {
     // the gift's own duration is the right default.
     animationDurationMs: LiveModelParsers.asInt(
       json['animationDurationMs'],
-      LiveModelParsers.asInt(LiveModelParsers.asMap(json['gift'])['animationDurationMs'], 2000),
+      LiveModelParsers.asInt(
+        LiveModelParsers.asMap(json['gift'])['animationDurationMs'],
+        2000,
+      ),
     ),
   );
 }
@@ -158,14 +181,16 @@ extension ChatMessageModel on ChatMessageEntity {
 }
 
 extension LeaderboardEntryModel on LeaderboardEntryEntity {
-  static LeaderboardEntryEntity fromJson(Map<String, dynamic> json, int fallbackRank) =>
-      LeaderboardEntryEntity(
-        rank: LiveModelParsers.asInt(json['rank'], fallbackRank),
-        user: UserProfileModel.fromJson(LiveModelParsers.asMap(json['user'])),
-        totalCoins: LiveModelParsers.asInt(json['totalCoins']),
-        totalDiamonds: LiveModelParsers.asInt(json['totalDiamonds']),
-        giftCount: LiveModelParsers.asInt(json['giftCount']),
-      );
+  static LeaderboardEntryEntity fromJson(
+    Map<String, dynamic> json,
+    int fallbackRank,
+  ) => LeaderboardEntryEntity(
+    rank: LiveModelParsers.asInt(json['rank'], fallbackRank),
+    user: UserProfileModel.fromJson(LiveModelParsers.asMap(json['user'])),
+    totalCoins: LiveModelParsers.asInt(json['totalCoins']),
+    totalDiamonds: LiveModelParsers.asInt(json['totalDiamonds']),
+    giftCount: LiveModelParsers.asInt(json['giftCount']),
+  );
 
   static List<LeaderboardEntryEntity> listFrom(Object? value) {
     final List<Map<String, dynamic>> raw = LiveModelParsers.asMapList(value);
@@ -177,24 +202,28 @@ extension LeaderboardEntryModel on LeaderboardEntryEntity {
 }
 
 extension CoinPackageModel on CoinPackageEntity {
-  static CoinPackageEntity fromJson(Map<String, dynamic> json) => CoinPackageEntity(
-    id: LiveModelParsers.asString(json['id']),
-    label: LiveModelParsers.asString(json['label']),
-    coins: LiveModelParsers.asInt(json['coins']),
-    priceUsd: LiveModelParsers.asDouble(json['priceUsd']),
-  );
+  static CoinPackageEntity fromJson(Map<String, dynamic> json) =>
+      CoinPackageEntity(
+        id: LiveModelParsers.asString(json['id']),
+        label: LiveModelParsers.asString(json['label']),
+        coins: LiveModelParsers.asInt(json['coins']),
+        priceUsd: LiveModelParsers.asDouble(json['priceUsd']),
+      );
 }
 
 extension LiveRoomSessionModel on LiveRoomSessionEntity {
-  static LiveRoomSessionEntity fromJson(Map<String, dynamic> json) => LiveRoomSessionEntity(
-    stream: LiveStreamModel.fromJson(LiveModelParsers.asMap(json['stream'])),
-    rtc: RtcCredentialsModel.fromJson(LiveModelParsers.asMap(json['rtc'])),
-    // The start-broadcast reply has no `role` field: opening a room always
-    // makes you its host.
-    role: LiveModelParsers.asString(json['role'], 'host'),
-    recentMessages: LiveModelParsers.asMapList(json['recentMessages'])
-        .map(ChatMessageModel.fromJson)
-        .toList(growable: false),
-    topGifters: LeaderboardEntryModel.listFrom(json['topGifters']),
-  );
+  static LiveRoomSessionEntity fromJson(Map<String, dynamic> json) =>
+      LiveRoomSessionEntity(
+        stream: LiveStreamModel.fromJson(
+          LiveModelParsers.asMap(json['stream']),
+        ),
+        rtc: RtcCredentialsModel.fromJson(LiveModelParsers.asMap(json['rtc'])),
+        // The start-broadcast reply has no `role` field: opening a room always
+        // makes you its host.
+        role: LiveModelParsers.asString(json['role'], 'host'),
+        recentMessages: LiveModelParsers.asMapList(
+          json['recentMessages'],
+        ).map(ChatMessageModel.fromJson).toList(growable: false),
+        topGifters: LeaderboardEntryModel.listFrom(json['topGifters']),
+      );
 }

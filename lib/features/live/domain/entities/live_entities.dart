@@ -88,8 +88,9 @@ class LiveStreamEntity {
 
   bool get isLive => status == LiveStreamStatus.live;
 
-  Duration get elapsed =>
-      isLive ? DateTime.now().difference(startedAt) : Duration(seconds: durationSeconds);
+  Duration get elapsed => isLive
+      ? DateTime.now().difference(startedAt)
+      : Duration(seconds: durationSeconds);
 
   LiveStreamEntity copyWith({
     int? viewerCount,
@@ -121,7 +122,8 @@ class LiveStreamEntity {
 class RtcCredentialsEntity {
   const RtcCredentialsEntity({
     required this.provider,
-    required this.appId,
+    required this.serverUrl,
+    required this.localServerUrl,
     required this.channelName,
     required this.uid,
     required this.token,
@@ -130,7 +132,8 @@ class RtcCredentialsEntity {
   });
 
   final String provider;
-  final String appId;
+  final String serverUrl;
+  final String localServerUrl;
   final String channelName;
   final int uid;
   final String token;
@@ -172,8 +175,7 @@ class GiftEntity {
 
   /// The catalogue stores an emoji in `iconUrl` until real artwork is uploaded,
   /// so anything that is not a URL is rendered as text.
-  bool get iconIsEmoji =>
-      iconUrl != null && !iconUrl!.startsWith('http');
+  bool get iconIsEmoji => iconUrl != null && !iconUrl!.startsWith('http');
 
   String get emoji => iconIsEmoji ? iconUrl! : '🎁';
 }

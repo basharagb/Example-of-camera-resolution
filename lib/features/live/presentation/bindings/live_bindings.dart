@@ -7,7 +7,7 @@ import '../../../../core/services/permissions/permission_service.dart';
 import '../../../../core/services/storage/token_storage.dart';
 import '../../../camera/domain/repositories/permission_repository.dart';
 import '../../../camera/domain/usecases/permission_usecases.dart';
-import '../../data/datasources/agora_media_engine.dart';
+import '../../data/datasources/livekit_media_engine.dart';
 import '../../data/datasources/live_remote_data_source.dart';
 import '../../data/repositories/live_repositories_impl.dart';
 import '../../domain/repositories/live_media_engine.dart';
@@ -39,7 +39,10 @@ class LiveCoreBinding extends Bindings {
       AuthRepositoryImpl(remote, Get.find<TokenStorage>()),
       permanent: true,
     );
-    Get.put<LiveStreamRepository>(LiveStreamRepositoryImpl(remote), permanent: true);
+    Get.put<LiveStreamRepository>(
+      LiveStreamRepositoryImpl(remote),
+      permanent: true,
+    );
     Get.put<ChatRepository>(ChatRepositoryImpl(remote), permanent: true);
     Get.put<GiftRepository>(GiftRepositoryImpl(remote), permanent: true);
     Get.put<WalletRepository>(WalletRepositoryImpl(remote), permanent: true);
@@ -47,7 +50,7 @@ class LiveCoreBinding extends Bindings {
     // One engine instance for the whole app: the vendor SDK is a native
     // singleton, and creating a second one while the first holds the camera
     // fails on both platforms.
-    Get.put<LiveMediaEngine>(AgoraMediaEngine(), permanent: true);
+    Get.put<LiveMediaEngine>(LiveKitMediaEngine(), permanent: true);
 
     Get.put<PermissionRepository>(
       PermissionService(DeviceInfoPlugin()),
@@ -76,7 +79,9 @@ class LiveListBinding extends Bindings {
   void dependencies() {
     Get.lazyPut<LiveListController>(
       () => LiveListController(
-        listLiveStreams: ListLiveStreamsUseCase(Get.find<LiveStreamRepository>()),
+        listLiveStreams: ListLiveStreamsUseCase(
+          Get.find<LiveStreamRepository>(),
+        ),
         globalLeaderboard: GlobalLeaderboardUseCase(Get.find<GiftRepository>()),
         eventsClient: Get.find<LiveEventsClient>(),
       ),
@@ -104,7 +109,9 @@ class LiveRoomBinding extends Bindings {
         joinStream: JoinStreamUseCase(Get.find<LiveStreamRepository>()),
         endStream: EndStreamUseCase(Get.find<LiveStreamRepository>()),
         heartbeat: HeartbeatUseCase(Get.find<LiveStreamRepository>()),
-        sendReactionUseCase: SendReactionUseCase(Get.find<LiveStreamRepository>()),
+        sendReactionUseCase: SendReactionUseCase(
+          Get.find<LiveStreamRepository>(),
+        ),
         sendChatMessage: SendChatMessageUseCase(Get.find<ChatRepository>()),
         loadGiftCatalogue: LoadGiftCatalogueUseCase(Get.find<GiftRepository>()),
         sendGiftUseCase: SendGiftUseCase(Get.find<GiftRepository>()),

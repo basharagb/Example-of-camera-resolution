@@ -2,7 +2,7 @@ import '../entities/live_entities.dart';
 
 /// What the app needs from a live video vendor, expressed without naming one.
 ///
-/// The Agora implementation lives in the data layer. Swapping to another SFU
+/// The LiveKit implementation lives in the data layer. Swapping to another SFU
 /// means writing a second implementation of this interface; nothing in the
 /// controllers or widgets changes.
 abstract interface class LiveMediaEngine {
@@ -16,7 +16,7 @@ abstract interface class LiveMediaEngine {
   Stream<LiveMediaEvent> get events;
 
   /// Prepares the vendor SDK. Safe to call more than once.
-  Future<void> initialize(String appId);
+  Future<void> initialize(String serverUrl);
 
   /// Starts an on-device camera preview without joining a media channel.
   ///

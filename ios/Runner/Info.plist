@@ -6,6 +6,13 @@
 	<string>Bashar Camera needs camera access to capture full-resolution photos and videos.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Bashar Camera needs microphone access only when you record video with sound.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Elite Live uses the local server directly when this device is on the same Wi-Fi network.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Bashar Camera needs photo library access when you choose existing media.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

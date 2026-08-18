@@ -16,29 +16,6 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 
-// agora_rtc_engine 6.5 still declares compileSdk 31, but the
-// androidx.window.extensions it pulls in require callers to compile against 33
-// or later, so the build fails on a dependency the plugin itself introduced.
-// Raising any plugin module below this floor keeps the whole build on one SDK
-// level. Compilation only: minSdk and targetSdk are untouched, so the range of
-// devices the app runs on is unchanged.
-//
-// This has to be registered before the `evaluationDependsOn` block below,
-// because that one forces plugin projects to evaluate and afterEvaluate cannot
-// be attached to an already evaluated project.
-subprojects {
-    afterEvaluate {
-        extensions
-            .findByType(com.android.build.api.dsl.LibraryExtension::class.java)
-            ?.let { android ->
-                val declared = android.compileSdk
-                if (declared == null || declared < 35) {
-                    android.compileSdk = 35
-                }
-            }
-    }
-}
-
 subprojects {
     project.evaluationDependsOn(":app")
 }
