@@ -18,6 +18,13 @@ abstract interface class LiveMediaEngine {
   /// Prepares the vendor SDK. Safe to call more than once.
   Future<void> initialize(String appId);
 
+  /// Starts an on-device camera preview without joining a media channel.
+  ///
+  /// Development backends can deliberately run without RTC credentials. The
+  /// host should still be able to frame the shot and use the camera controls,
+  /// even though that preview cannot be delivered to an audience.
+  Future<void> startLocalPreview();
+
   /// Publishes the local camera and microphone into [credentials]'s channel.
   Future<void> joinAsHost(RtcCredentialsEntity credentials);
 

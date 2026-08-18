@@ -207,8 +207,17 @@ class LiveRoomController extends GetxController {
 
   Future<void> _connectMedia(RtcCredentialsEntity credentials) async {
     if (credentials.isMock) {
-      // Nothing to connect to; the placeholder surface stands in for video so
-      // the rest of the room stays fully testable.
+      // A mock backend cannot deliver video to viewers, but the host can still
+      // frame the shot and exercise camera controls with an on-device preview.
+      if (isHost) {
+        try {
+          await mediaEngine.startLocalPreview();
+        } catch (error, stackTrace) {
+          // The mock room remains useful for chat, gifts and reactions even on
+          // a simulator or a device whose camera could not be initialised.
+          debugLog('Local preview is unavailable', error, stackTrace);
+        }
+      }
       isVideoReady.value = true;
       return;
     }
@@ -489,7 +498,22 @@ class LiveRoomController extends GetxController {
     await mediaEngine.setCameraEnabled(isCameraOn.value);
   }
 
-  Future<void> switchCamera() => mediaEngine.switchCamera();
+  Future<void> switchCamera() async {
+    if (rtc.value?.isMock ?? false) {
+      isVideoReady.value = false;
+      try {
+        await mediaEngine.switchCamera();
+      } catch (error, stackTrace) {
+        debugLog('Could not switch the local preview camera', error, stackTrace);
+      } finally {
+        // Rebuild with either the new controller or the explicit preview-failed
+        // placeholder. Leaving this false would show a spinner forever.
+        isVideoReady.value = true;
+      }
+      return;
+    }
+    await mediaEngine.switchCamera();
+  }
 
   Future<void> openAppSettings() => openSettings();
 

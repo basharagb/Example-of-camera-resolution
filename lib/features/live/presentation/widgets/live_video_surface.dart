@@ -1,4 +1,5 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:camera/camera.dart' as camera;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -10,9 +11,8 @@ import '../controllers/live_room_controller.dart';
 /// The video layer of a room.
 ///
 /// It renders the host's local camera when broadcasting and the remote track
-/// when watching. When the backend is running without vendor credentials it
-/// shows a labelled placeholder instead: an honest "no video configured" reads
-/// better than a black rectangle that looks like a bug.
+/// when watching. A mock backend cannot deliver a remote track, but the host
+/// still gets a real local camera preview for framing and camera controls.
 class LiveVideoSurface extends StatelessWidget {
   const LiveVideoSurface({required this.controller, super.key});
 
@@ -27,6 +27,23 @@ class LiveVideoSurface extends StatelessWidget {
         return const ColoredBox(color: LiveColors.background);
       }
       if (credentials.isMock) {
+        if (controller.isHost) {
+          if (!controller.isCameraOn.value) {
+            return const _CameraOffSurface();
+          }
+          if (!controller.isVideoReady.value) {
+            return const _LoadingSurface(label: 'Starting camera');
+          }
+
+          final camera.CameraController? preview =
+              (controller.mediaEngine is AgoraMediaEngine)
+              ? (controller.mediaEngine as AgoraMediaEngine)
+                    .localPreviewController
+              : null;
+          if (preview != null && preview.value.isInitialized) {
+            return _MockHostSurface(preview: preview);
+          }
+        }
         return _MockSurface(controller: controller);
       }
 
@@ -65,6 +82,61 @@ class LiveVideoSurface extends StatelessWidget {
       );
     });
   }
+}
+
+/// Full-screen local preview for a host using a mock RTC backend. The badge is
+/// intentional: the camera is real, but without an RTC provider these frames
+/// are not being sent to another device.
+class _MockHostSurface extends StatelessWidget {
+  const _MockHostSurface({required this.preview});
+
+  final camera.CameraController preview;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: <Widget>[
+      LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final double previewRatio = 1 / preview.value.aspectRatio;
+          final double screenRatio =
+              constraints.maxWidth / constraints.maxHeight;
+          final double coverScale = previewRatio > screenRatio
+              ? previewRatio / screenRatio
+              : screenRatio / previewRatio;
+
+          return ClipRect(
+            child: Transform.scale(
+              scale: coverScale,
+              child: Center(child: camera.CameraPreview(preview)),
+            ),
+          );
+        },
+      ),
+      Positioned(
+        left: 24,
+        right: 24,
+        bottom: 132,
+        child: Center(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.62),
+              borderRadius: BorderRadius.circular(LiveMetrics.pillRadius),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              child: Text(
+                'Local preview only • Connect Agora to broadcast',
+                textAlign: TextAlign.center,
+                style: LiveTextStyles.caption.copyWith(fontSize: 10.5),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
 }
 
 class _LoadingSurface extends StatelessWidget {
@@ -111,8 +183,7 @@ class _CameraOffSurface extends StatelessWidget {
   );
 }
 
-/// Stand-in shown when `RTC_PROVIDER=mock`. Everything except the video works,
-/// which is what makes the room testable without a vendor account.
+/// Stand-in shown to mock-room viewers, or when a host's local preview fails.
 class _MockSurface extends StatelessWidget {
   const _MockSurface({required this.controller});
 
@@ -161,7 +232,9 @@ class _MockSurface extends StatelessWidget {
                 border: Border.all(color: LiveColors.divider),
               ),
               child: Text(
-                'Video preview unavailable in this build',
+                controller.isHost
+                    ? 'Camera preview could not start'
+                    : 'Live video needs Agora to be connected',
                 style: LiveTextStyles.caption.copyWith(fontSize: 11),
               ),
             ),

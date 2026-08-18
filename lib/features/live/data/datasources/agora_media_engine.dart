@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:camera/camera.dart' as camera;
 
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/debug_log.dart';
@@ -16,13 +17,18 @@ class AgoraMediaEngine implements LiveMediaEngine {
   RtcEngine? _engine;
   String? _initializedAppId;
   bool _joined = false;
+  camera.CameraController? _localPreviewController;
+  List<camera.CameraDescription> _localCameras = <camera.CameraDescription>[];
+  int _localCameraIndex = 0;
 
   final StreamController<LiveMediaEvent> _events =
       StreamController<LiveMediaEvent>.broadcast();
   final List<int> _remoteUids = <int>[];
 
   @override
-  bool get isReady => _engine != null;
+  bool get isReady =>
+      _engine != null ||
+      (_localPreviewController?.value.isInitialized ?? false);
 
   @override
   List<int> get remoteUids => List<int>.unmodifiable(_remoteUids);
@@ -33,6 +39,11 @@ class AgoraMediaEngine implements LiveMediaEngine {
   /// The live engine instance, for the video view widgets. Null until
   /// [initialize] has run.
   RtcEngine? get rawEngine => _engine;
+
+  /// Camera-plugin preview used only when the backend explicitly returns mock
+  /// RTC credentials. Real rooms always render through [rawEngine].
+  camera.CameraController? get localPreviewController =>
+      _localPreviewController;
 
   @override
   Future<void> initialize(String appId) async {
@@ -66,6 +77,53 @@ class AgoraMediaEngine implements LiveMediaEngine {
     } catch (error, stackTrace) {
       debugLog('Agora initialisation failed', error, stackTrace);
       throw BroadcastFailure('Could not start the live video engine', error);
+    }
+  }
+
+  @override
+  Future<void> startLocalPreview() async {
+    if (_localPreviewController?.value.isInitialized ?? false) {
+      return;
+    }
+
+    try {
+      _localCameras = await camera.availableCameras();
+      if (_localCameras.isEmpty) {
+        throw const BroadcastFailure('No camera is available on this device');
+      }
+
+      final int frontCameraIndex = _localCameras.indexWhere(
+        (camera.CameraDescription device) =>
+            device.lensDirection == camera.CameraLensDirection.front,
+      );
+      _localCameraIndex = frontCameraIndex < 0 ? 0 : frontCameraIndex;
+      await _openLocalCamera(_localCameraIndex);
+      debugLog('Local host preview started (RTC provider: mock)');
+    } on BroadcastFailure {
+      rethrow;
+    } catch (error, stackTrace) {
+      debugLog('Local host preview failed', error, stackTrace);
+      throw BroadcastFailure('Could not start the camera preview', error);
+    }
+  }
+
+  Future<void> _openLocalCamera(int index) async {
+    final camera.CameraController? previous = _localPreviewController;
+    _localPreviewController = null;
+    await previous?.dispose();
+
+    final camera.CameraController next = camera.CameraController(
+      _localCameras[index],
+      camera.ResolutionPreset.high,
+      enableAudio: false,
+    );
+    try {
+      await next.initialize();
+      _localCameraIndex = index;
+      _localPreviewController = next;
+    } catch (_) {
+      await next.dispose();
+      rethrow;
     }
   }
 
@@ -192,6 +250,14 @@ class AgoraMediaEngine implements LiveMediaEngine {
 
   @override
   Future<void> switchCamera() async {
+    if (_localPreviewController != null) {
+      if (_localCameras.length < 2) {
+        return;
+      }
+      final int nextIndex = (_localCameraIndex + 1) % _localCameras.length;
+      await _openLocalCamera(nextIndex);
+      return;
+    }
     await _engine?.switchCamera();
   }
 
@@ -202,6 +268,16 @@ class AgoraMediaEngine implements LiveMediaEngine {
 
   @override
   Future<void> setCameraEnabled(bool enabled) async {
+    final camera.CameraController? localPreview = _localPreviewController;
+    if (localPreview != null) {
+      if (enabled) {
+        await localPreview.resumePreview();
+      } else {
+        await localPreview.pausePreview();
+      }
+      return;
+    }
+
     final RtcEngine? engine = _engine;
     if (engine == null) {
       return;
@@ -221,6 +297,12 @@ class AgoraMediaEngine implements LiveMediaEngine {
 
   @override
   Future<void> leave() async {
+    final camera.CameraController? localPreview = _localPreviewController;
+    _localPreviewController = null;
+    _localCameras = <camera.CameraDescription>[];
+    _localCameraIndex = 0;
+    await localPreview?.dispose();
+
     final RtcEngine? engine = _engine;
     if (engine == null || !_joined) {
       _remoteUids.clear();
