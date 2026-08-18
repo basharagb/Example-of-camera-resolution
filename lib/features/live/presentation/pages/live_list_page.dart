@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/theme/live_theme.dart';
@@ -7,11 +8,14 @@ import '../../domain/entities/live_entities.dart';
 import '../controllers/live_list_controller.dart';
 import '../controllers/session_controller.dart';
 import '../widgets/coin_top_up_sheet.dart';
+import '../widgets/live_cover.dart';
 
-/// The discovery feed: who is live right now.
+/// The discovery feed, as a full-screen vertical pager.
 ///
-/// It stays current over the socket, so a room that opens or closes appears or
-/// disappears without a refresh.
+/// One room fills the screen at a time and a vertical swipe moves to the next,
+/// which is the shape people already know from short-video apps: no grid of
+/// thumbnails to parse, just the room itself. The list stays current over the
+/// realtime stream, so rooms appear and disappear as they open and close.
 class LiveListPage extends GetView<LiveListController> {
   const LiveListPage({super.key});
 
@@ -21,439 +25,466 @@ class LiveListPage extends GetView<LiveListController> {
 
     return Scaffold(
       backgroundColor: LiveColors.background,
-      body: SafeArea(
-        child: Column(
-          children: <Widget>[
-            _Header(session: session),
-            _TopHostsStrip(controller: controller),
-            Expanded(
-              child: RefreshIndicator(
-                color: LiveColors.accent,
-                backgroundColor: LiveColors.surface,
-                onRefresh: controller.refreshFeed,
-                child: Obx(() {
-                  if (controller.isLoading.value && controller.streams.isEmpty) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: LiveColors.accent),
-                    );
-                  }
-                  if (controller.streams.isEmpty) {
-                    return _EmptyFeed(controller: controller);
-                  }
-                  return _FeedGrid(controller: controller);
-                }),
-              ),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: LiveColors.live,
-        foregroundColor: Colors.white,
-        onPressed: () => Get.toNamed<void>(AppRoutes.goLive),
-        icon: const Icon(Icons.videocam_rounded),
-        label: const Text('Go live', style: TextStyle(fontWeight: FontWeight.w800)),
+      // The pager runs edge to edge behind the status bar; the chrome floats
+      // above it inside its own SafeArea.
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          Obx(() {
+            if (controller.isLoading.value && controller.streams.isEmpty) {
+              return const Center(
+                child: CircularProgressIndicator(color: LiveColors.accent),
+              );
+            }
+            if (controller.streams.isEmpty) {
+              return _EmptyFeed(controller: controller);
+            }
+            return _LiveFeedPager(controller: controller);
+          }),
+          _TopBar(session: session, controller: controller),
+          _GoLiveButton(),
+        ],
       ),
     );
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.session});
+class _LiveFeedPager extends StatefulWidget {
+  const _LiveFeedPager({required this.controller});
 
-  final SessionController session;
+  final LiveListController controller;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(LiveMetrics.screenPadding, 10, 10, 12),
-    child: Row(
-      children: <Widget>[
-        Text('Live', style: LiveTextStyles.displayLarge),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: LiveColors.live,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: const Text('NOW', style: LiveTextStyles.badge),
+  State<_LiveFeedPager> createState() => _LiveFeedPagerState();
+}
+
+class _LiveFeedPagerState extends State<_LiveFeedPager> {
+  final PageController _pageController = PageController();
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final List<LiveStreamEntity> streams = widget.controller.streams;
+      return RefreshIndicator(
+        color: LiveColors.accent,
+        backgroundColor: LiveColors.surface,
+        onRefresh: widget.controller.refreshFeed,
+        child: PageView.builder(
+          controller: _pageController,
+          scrollDirection: Axis.vertical,
+          itemCount: streams.length,
+          onPageChanged: (int index) {
+            HapticFeedback.selectionClick();
+            // Fetch the next page a little before the end so a fast swipe does
+            // not hit a wall.
+            if (index >= streams.length - 2) {
+              widget.controller.loadMore();
+            }
+          },
+          itemBuilder: (BuildContext context, int index) =>
+              _LiveFeedPage(stream: streams[index], isFirst: index == 0),
         ),
-        const Spacer(),
-        GestureDetector(
-          onTap: () => CoinTopUpSheet.show(context: context, session: session),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      );
+    });
+  }
+}
+
+/// One room, full screen.
+class _LiveFeedPage extends StatelessWidget {
+  const _LiveFeedPage({required this.stream, required this.isFirst});
+
+  final LiveStreamEntity stream;
+  final bool isFirst;
+
+  void _enter() {
+    HapticFeedback.mediumImpact();
+    Get.toNamed<void>(
+      AppRoutes.liveRoom,
+      arguments: <String, dynamic>{'streamId': stream.id},
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _enter,
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          LiveCover(stream: stream, initialSize: 220),
+
+          // Keeps the white chrome legible over any cover.
+          const DecoratedBox(
             decoration: BoxDecoration(
-              color: LiveColors.surfaceRaised,
-              borderRadius: BorderRadius.circular(LiveMetrics.pillRadius),
-              border: Border.all(color: LiveColors.coin.withValues(alpha: 0.3)),
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: <Color>[
+                  Color(0xF2000000),
+                  Color(0x99000000),
+                  Color(0x33000000),
+                  Color(0xB3000000),
+                ],
+                stops: <double>[0, 0.35, 0.65, 1],
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                const Text('🪙', style: TextStyle(fontSize: 14)),
-                const SizedBox(width: 6),
-                Obx(
-                  () => Text(
-                    formatCompact(session.wallet.value.coinBalance),
-                    style: LiveTextStyles.caption.copyWith(
-                      color: LiveColors.coin,
-                      fontWeight: FontWeight.w800,
+          ),
+
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 26),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        LiveAvatar(
+                          profile: stream.host,
+                          size: 52,
+                          ring: LiveColors.live,
+                          ringWidth: 2,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                stream.host.displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: LiveTextStyles.title.copyWith(fontSize: 19),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '@${stream.host.username}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: LiveTextStyles.caption.copyWith(fontSize: 12.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 14),
+                    Text(
+                      stream.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: LiveTextStyles.body.copyWith(
+                        fontSize: 16,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: <Widget>[
+                        _Stat(
+                          icon: Icons.remove_red_eye_rounded,
+                          value: formatCompact(stream.viewerCount),
+                          label: 'watching',
+                        ),
+                        const SizedBox(width: 22),
+                        _Stat(
+                          emoji: '🪙',
+                          value: formatCompact(stream.totalCoins),
+                          label: 'coins',
+                          tint: LiveColors.coin,
+                        ),
+                        const SizedBox(width: 22),
+                        _Stat(
+                          emoji: '❤️',
+                          value: formatCompact(stream.totalLikes),
+                          label: 'likes',
+                          tint: LiveColors.live,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: LiveColors.live,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              LiveMetrics.pillRadius,
+                            ),
+                          ),
+                        ),
+                        onPressed: _enter,
+                        child: const Text(
+                          'Join live',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Shown once, on the first room, so the gesture is
+                    // discoverable without nagging on every page.
+                    if (isFirst) ...<Widget>[
+                      const SizedBox(height: 12),
+                      const Center(child: _SwipeHint()),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 62,
+            left: 20,
+            child: Row(
+              children: <Widget>[
+                const LivePill(),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.42),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      const Icon(
+                        Icons.remove_red_eye_rounded,
+                        size: 12,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        formatCompact(stream.viewerCount),
+                        style: LiveTextStyles.badge.copyWith(fontSize: 10.5),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({
+    required this.value,
+    required this.label,
+    this.icon,
+    this.emoji,
+    this.tint = LiveColors.textPrimary,
+  });
+
+  final String value;
+  final String label;
+  final IconData? icon;
+  final String? emoji;
+  final Color tint;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Row(
+        children: <Widget>[
+          if (emoji != null)
+            Text(emoji!, style: const TextStyle(fontSize: 13))
+          else
+            Icon(icon, size: 14, color: tint),
+          const SizedBox(width: 5),
+          Text(
+            value,
+            style: LiveTextStyles.title.copyWith(fontSize: 15, color: tint),
+          ),
+        ],
+      ),
+      const SizedBox(height: 1),
+      Text(label, style: LiveTextStyles.caption.copyWith(fontSize: 10.5)),
+    ],
+  );
+}
+
+class _SwipeHint extends StatefulWidget {
+  const _SwipeHint();
+
+  @override
+  State<_SwipeHint> createState() => _SwipeHintState();
+}
+
+class _SwipeHintState extends State<_SwipeHint>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: Tween<double>(begin: 0.35, end: 0.9).animate(_controller),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        const Icon(
+          Icons.keyboard_arrow_up_rounded,
+          size: 17,
+          color: LiveColors.textSecondary,
         ),
-        const SizedBox(width: 8),
-        PopupMenuButton<String>(
-          color: LiveColors.surfaceRaised,
-          icon: const Icon(Icons.more_vert_rounded, color: LiveColors.textSecondary),
-          onSelected: (String value) async {
-            if (value == 'logout') {
-              await session.logout();
-              Get.offAllNamed<void>(AppRoutes.auth);
-            }
-          },
-          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-            PopupMenuItem<String>(
-              enabled: false,
-              child: Obx(
-                () => Text(
-                  session.user.value?.displayName ?? '',
-                  style: LiveTextStyles.caption,
-                ),
-              ),
-            ),
-            const PopupMenuDivider(),
-            PopupMenuItem<String>(
-              value: 'logout',
-              child: Text('Sign out', style: LiveTextStyles.body),
-            ),
-          ],
+        const SizedBox(width: 5),
+        Text(
+          'Swipe for more lives',
+          style: LiveTextStyles.caption.copyWith(fontSize: 11.5),
         ),
       ],
     ),
   );
 }
 
-/// The weekly top earning hosts, shown as a horizontal strip above the feed.
-class _TopHostsStrip extends StatelessWidget {
-  const _TopHostsStrip({required this.controller});
+/// Floating chrome: identity, wallet and the account menu.
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.session, required this.controller});
 
+  final SessionController session;
   final LiveListController controller;
 
   @override
-  Widget build(BuildContext context) => Obx(() {
-    final List<LeaderboardEntryEntity> hosts = controller.topHosts;
-    if (hosts.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(LiveMetrics.screenPadding, 0, 0, 8),
-          child: Row(
-            children: <Widget>[
-              const Text('💎', style: TextStyle(fontSize: 13)),
-              const SizedBox(width: 6),
-              Text(
-                'Top hosts this week',
-                style: LiveTextStyles.caption.copyWith(fontWeight: FontWeight.w800),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 74,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(
-              horizontal: LiveMetrics.screenPadding,
+  Widget build(BuildContext context) => SafeArea(
+    bottom: false,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(18, 6, 10, 0),
+      child: Row(
+        children: <Widget>[
+          Text(
+            'Live',
+            style: LiveTextStyles.displayLarge.copyWith(
+              shadows: <Shadow>[
+                const Shadow(color: Color(0xCC000000), blurRadius: 12),
+              ],
             ),
-            itemCount: hosts.length,
-            separatorBuilder: (BuildContext context, int index) =>
-                const SizedBox(width: 14),
-            itemBuilder: (BuildContext context, int index) {
-              final LeaderboardEntryEntity entry = hosts[index];
-              final Color ring = switch (entry.rank) {
-                1 => const Color(0xFFFFD700),
-                2 => const Color(0xFFC0C6CE),
-                3 => const Color(0xFFCD7F32),
-                _ => LiveColors.divider,
-              };
-              return SizedBox(
-                width: 56,
-                child: Column(
-                  children: <Widget>[
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: LiveColors.surfaceRaised,
-                        border: Border.all(color: ring, width: 2),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        entry.user.initial,
-                        style: LiveTextStyles.title.copyWith(fontSize: 17),
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      formatCompact(entry.totalDiamonds),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => CoinTopUpSheet.show(context: context, session: session),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.42),
+                borderRadius: BorderRadius.circular(LiveMetrics.pillRadius),
+                border: Border.all(color: LiveColors.coin.withValues(alpha: 0.45)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const Text('🪙', style: TextStyle(fontSize: 14)),
+                  const SizedBox(width: 6),
+                  Obx(
+                    () => Text(
+                      formatCompact(session.wallet.value.coinBalance),
                       style: LiveTextStyles.caption.copyWith(
-                        color: LiveColors.diamond,
-                        fontSize: 10.5,
+                        color: LiveColors.coin,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 14),
-      ],
-    );
-  });
-}
-
-class _FeedGrid extends StatelessWidget {
-  const _FeedGrid({required this.controller});
-
-  final LiveListController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return NotificationListener<ScrollNotification>(
-      onNotification: (ScrollNotification notification) {
-        // Prefetch a page before the user reaches the bottom.
-        if (notification.metrics.pixels >
-            notification.metrics.maxScrollExtent - 400) {
-          controller.loadMore();
-        }
-        return false;
-      },
-      child: GridView.builder(
-        padding: const EdgeInsets.fromLTRB(
-          LiveMetrics.screenPadding,
-          0,
-          LiveMetrics.screenPadding,
-          90,
-        ),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 0.68,
-        ),
-        itemCount: controller.streams.length,
-        itemBuilder: (BuildContext context, int index) =>
-            _StreamCard(stream: controller.streams[index]),
-      ),
-    );
-  }
-}
-
-class _StreamCard extends StatelessWidget {
-  const _StreamCard({required this.stream});
-
-  final LiveStreamEntity stream;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Get.toNamed<void>(
-        AppRoutes.liveRoom,
-        arguments: <String, dynamic>{'streamId': stream.id},
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(LiveMetrics.cardRadius),
-        child: Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            // Real thumbnails need a media server snapshot; until then the
-            // host's initial on a tinted ground keeps the grid legible.
-            _CoverPlaceholder(stream: stream),
-
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: <Color>[Color(0xE6000000), Colors.transparent],
-                  stops: <double>[0, 0.62],
-                ),
-              ),
-            ),
-
-            Positioned(
-              top: 9,
-              left: 9,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: LiveColors.live,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: const Text('LIVE', style: LiveTextStyles.badge),
-              ),
-            ),
-
-            Positioned(
-              top: 9,
-              right: 9,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const Icon(
-                      Icons.remove_red_eye_rounded,
-                      size: 11,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      formatCompact(stream.viewerCount),
-                      style: LiveTextStyles.badge.copyWith(fontSize: 10),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            Positioned(
-              left: 10,
-              right: 10,
-              bottom: 10,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    stream.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: LiveTextStyles.body.copyWith(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: <Widget>[
-                      Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: LiveColors.accent.withValues(alpha: 0.25),
-                          border: Border.all(color: LiveColors.accent, width: 1),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          stream.host.initial,
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          stream.host.displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: LiveTextStyles.caption.copyWith(fontSize: 11),
-                        ),
-                      ),
-                      if (stream.totalCoins > 0) ...<Widget>[
-                        const Text('🪙', style: TextStyle(fontSize: 10)),
-                        const SizedBox(width: 3),
-                        Text(
-                          formatCompact(stream.totalCoins),
-                          style: LiveTextStyles.caption.copyWith(
-                            color: LiveColors.coin,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ],
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+          PopupMenuButton<String>(
+            color: LiveColors.surfaceRaised,
+            icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+            onSelected: (String value) async {
+              if (value == 'refresh') {
+                await controller.refreshFeed();
+              } else if (value == 'logout') {
+                await session.logout();
+                Get.offAllNamed<void>(AppRoutes.auth);
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(
+                enabled: false,
+                child: Obx(
+                  () => Text(
+                    session.user.value?.displayName ?? '',
+                    style: LiveTextStyles.caption,
+                  ),
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'refresh',
+                child: Text('Refresh', style: LiveTextStyles.body),
+              ),
+              PopupMenuItem<String>(
+                value: 'logout',
+                child: Text('Sign out', style: LiveTextStyles.body),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }
 
-class _CoverPlaceholder extends StatelessWidget {
-  const _CoverPlaceholder({required this.stream});
-
-  final LiveStreamEntity stream;
-
-  /// A stable per-host tint, so the same host always gets the same card colour
-  /// and the grid does not reshuffle its palette on every refresh.
-  static const List<List<Color>> _grounds = <List<Color>>[
-    <Color>[Color(0xFF2A1B4A), Color(0xFF0E0A18)],
-    <Color>[Color(0xFF1B3A4A), Color(0xFF0A1418)],
-    <Color>[Color(0xFF4A2B1B), Color(0xFF180E0A)],
-    <Color>[Color(0xFF1B4A2E), Color(0xFF0A180F)],
-    <Color>[Color(0xFF4A1B38), Color(0xFF180A13)],
-  ];
-
+class _GoLiveButton extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    if (stream.coverUrl != null && stream.coverUrl!.startsWith('http')) {
-      return Image.network(
-        stream.coverUrl!,
-        fit: BoxFit.cover,
-        errorBuilder:
-            (BuildContext context, Object error, StackTrace? stackTrace) =>
-                _fallback(),
-      );
-    }
-    return _fallback();
-  }
-
-  Widget _fallback() {
-    final List<Color> ground =
-        _grounds[stream.host.id.hashCode.abs() % _grounds.length];
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: ground,
-        ),
-      ),
-      child: Center(
-        child: Text(
-          stream.host.initial,
-          style: const TextStyle(
-            fontSize: 54,
-            fontWeight: FontWeight.w900,
-            color: Color(0x33FFFFFF),
+  Widget build(BuildContext context) => Positioned(
+    right: 18,
+    bottom: MediaQuery.of(context).padding.bottom + 250,
+    child: GestureDetector(
+      onTap: () => Get.toNamed<void>(AppRoutes.goLive),
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            colors: <Color>[Color(0xFFFF365E), Color(0xFFFF7A3D)],
           ),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: LiveColors.live.withValues(alpha: 0.5),
+              blurRadius: 20,
+              spreadRadius: 1,
+            ),
+          ],
         ),
+        child: const Icon(Icons.videocam_rounded, color: Colors.white, size: 27),
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _EmptyFeed extends StatelessWidget {
@@ -462,21 +493,44 @@ class _EmptyFeed extends StatelessWidget {
   final LiveListController controller;
 
   @override
-  Widget build(BuildContext context) => ListView(
-    children: <Widget>[
-      SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-      const Icon(Icons.videocam_off_rounded, size: 54, color: LiveColors.textMuted),
-      const SizedBox(height: 16),
-      Center(
-        child: Text(
-          controller.errorMessage.value ?? 'Nobody is live right now',
-          style: LiveTextStyles.body,
+  Widget build(BuildContext context) => RefreshIndicator(
+    color: LiveColors.accent,
+    backgroundColor: LiveColors.surface,
+    onRefresh: controller.refreshFeed,
+    child: ListView(
+      children: <Widget>[
+        SizedBox(height: MediaQuery.of(context).size.height * 0.28),
+        Center(
+          child: Container(
+            width: 92,
+            height: 92,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: LiveColors.live.withValues(alpha: 0.12),
+            ),
+            child: const Icon(
+              Icons.videocam_off_rounded,
+              size: 42,
+              color: LiveColors.live,
+            ),
+          ),
         ),
-      ),
-      const SizedBox(height: 8),
-      Center(
-        child: Text('Be the first to go live', style: LiveTextStyles.caption),
-      ),
-    ],
+        const SizedBox(height: 22),
+        Center(
+          child: Text(
+            controller.errorMessage.value ?? 'Nobody is live right now',
+            style: LiveTextStyles.title,
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: Text(
+            'Tap the red button to start your own',
+            style: LiveTextStyles.caption,
+          ),
+        ),
+      ],
+    ),
   );
 }

@@ -3,26 +3,26 @@ import 'dart:async';
 import 'package:get/get.dart';
 
 import '../../../../core/errors/failures.dart';
-import '../../../../core/services/network/live_socket_client.dart';
+import '../../../../core/services/network/live_events_client.dart';
 import '../../data/models/live_models.dart';
 import '../../domain/entities/live_entities.dart';
 import '../../domain/usecases/live_usecases.dart';
 
 /// The discovery feed.
 ///
-/// It is kept live by the socket rather than by polling: a room that opens or
+/// It is kept live by the realtime stream rather than by polling: a room that opens or
 /// closes anywhere appears or disappears here immediately, and the list only
 /// refetches when the user pulls to refresh or pages.
 class LiveListController extends GetxController {
   LiveListController({
     required this.listLiveStreams,
     required this.globalLeaderboard,
-    required this.socketClient,
+    required this.eventsClient,
   });
 
   final ListLiveStreamsUseCase listLiveStreams;
   final GlobalLeaderboardUseCase globalLeaderboard;
-  final LiveSocketClient socketClient;
+  final LiveEventsClient eventsClient;
 
   final RxList<LiveStreamEntity> streams = <LiveStreamEntity>[].obs;
   final RxList<LeaderboardEntryEntity> topHosts = <LeaderboardEntryEntity>[].obs;
@@ -32,12 +32,12 @@ class LiveListController extends GetxController {
   final RxBool hasMore = false.obs;
 
   int _page = 1;
-  StreamSubscription<LiveSocketEvent>? _socketSubscription;
+  StreamSubscription<LiveRealtimeEvent>? _eventsSubscription;
 
   @override
   void onInit() {
     super.onInit();
-    _socketSubscription = socketClient.events.listen(_onSocketEvent);
+    _eventsSubscription = eventsClient.events.listen(_onRealtimeEvent);
     refreshFeed();
   }
 
@@ -88,7 +88,7 @@ class LiveListController extends GetxController {
     }
   }
 
-  void _onSocketEvent(LiveSocketEvent event) {
+  void _onRealtimeEvent(LiveRealtimeEvent event) {
     switch (event.name) {
       case LiveEvents.streamStarted:
         final Map<String, dynamic> raw = LiveModelParsers.asMap(event.payload['stream']);
@@ -109,7 +109,7 @@ class LiveListController extends GetxController {
 
   @override
   void onClose() {
-    _socketSubscription?.cancel();
+    _eventsSubscription?.cancel();
     super.onClose();
   }
 }

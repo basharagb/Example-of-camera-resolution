@@ -7,6 +7,7 @@ import '../../../../core/theme/live_theme.dart';
 import '../../domain/entities/live_entities.dart';
 import '../../domain/repositories/live_media_engine.dart';
 import '../controllers/live_room_controller.dart';
+import 'live_cover.dart';
 
 /// The persistent header: who is broadcasting, how long for, how many people
 /// are watching, and how healthy the connection is.
@@ -38,7 +39,7 @@ class LiveRoomHeader extends StatelessWidget {
               children: <Widget>[
                 Flexible(child: _HostCard(controller: controller)),
                 const SizedBox(width: 8),
-                _ViewerPill(controller: controller),
+                _ViewerStrip(controller: controller),
                 const SizedBox(width: 6),
                 _CloseButton(onTap: onClose),
               ],
@@ -46,7 +47,7 @@ class LiveRoomHeader extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: <Widget>[
-                const _LiveBadge(),
+                const LivePill(),
                 const SizedBox(width: 7),
                 _ElapsedPill(controller: controller),
                 const SizedBox(width: 7),
@@ -82,7 +83,7 @@ class _HostCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          _Avatar(profile: stream.host, size: 34),
+          LiveAvatar(profile: stream.host, size: 34, ring: LiveColors.live),
           const SizedBox(width: 9),
           Flexible(
             child: Column(
@@ -113,65 +114,46 @@ class _HostCard extends StatelessWidget {
   });
 }
 
-class _LiveBadge extends StatefulWidget {
-  const _LiveBadge();
-
-  @override
-  State<_LiveBadge> createState() => _LiveBadgeState();
-}
-
-class _LiveBadgeState extends State<_LiveBadge> with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1100),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-    decoration: BoxDecoration(
-      color: LiveColors.live,
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        FadeTransition(
-          opacity: Tween<double>(begin: 0.35, end: 1).animate(_pulse),
-          child: Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-        const SizedBox(width: 5),
-        const Text('LIVE', style: LiveTextStyles.badge),
-      ],
-    ),
-  );
-}
-
-class _ViewerPill extends StatelessWidget {
-  const _ViewerPill({required this.controller});
+class _ViewerStrip extends StatelessWidget {
+  const _ViewerStrip({required this.controller});
 
   final LiveRoomController controller;
 
   @override
-  Widget build(BuildContext context) => Obx(
-    () => _GlassPill(
-      icon: Icons.remove_red_eye_rounded,
-      label: formatCompact(controller.viewerCount.value),
-    ),
-  );
+  Widget build(BuildContext context) => Obx(() {
+    final List<UserProfileEntity> viewers = controller.recentViewers;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (viewers.isNotEmpty) ...<Widget>[
+          SizedBox(
+            height: 26,
+            // Overlapped by a third of their width, newest on top.
+            width: 26 + (viewers.length - 1) * 17,
+            child: Stack(
+              children: <Widget>[
+                for (int index = viewers.length - 1; index >= 0; index--)
+                  Positioned(
+                    left: index * 17,
+                    child: LiveAvatar(
+                      profile: viewers[index],
+                      size: 26,
+                      ring: Colors.white24,
+                      ringWidth: 1.2,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+        ],
+        _GlassPill(
+          icon: Icons.remove_red_eye_rounded,
+          label: formatCompact(controller.viewerCount.value),
+        ),
+      ],
+    );
+  });
 }
 
 class _ElapsedPill extends StatelessWidget {
@@ -351,7 +333,7 @@ class TopGiftersBar extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                _Avatar(profile: entry.user, size: 26, ring: tint),
+                LiveAvatar(profile: entry.user, size: 26, ring: tint),
                 const SizedBox(width: 7),
                 Text(
                   formatCompact(entry.totalCoins),
@@ -368,41 +350,4 @@ class TopGiftersBar extends StatelessWidget {
       ),
     );
   });
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.profile, required this.size, this.ring});
-
-  final UserProfileEntity profile;
-  final double size;
-  final Color? ring;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool hasImage =
-        profile.avatarUrl != null && profile.avatarUrl!.startsWith('http');
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: LiveColors.surfaceRaised,
-        border: Border.all(color: ring ?? LiveColors.accent, width: 1.4),
-        image: hasImage
-            ? DecorationImage(image: NetworkImage(profile.avatarUrl!), fit: BoxFit.cover)
-            : null,
-      ),
-      alignment: Alignment.center,
-      child: hasImage
-          ? null
-          : Text(
-              profile.initial,
-              style: TextStyle(
-                fontSize: size * 0.42,
-                fontWeight: FontWeight.w800,
-                color: LiveColors.textPrimary,
-              ),
-            ),
-    );
-  }
 }

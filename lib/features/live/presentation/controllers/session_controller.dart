@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/errors/failures.dart';
 import '../../../../core/services/network/api_client.dart';
-import '../../../../core/services/network/live_socket_client.dart';
+import '../../../../core/services/network/live_events_client.dart';
 import '../../../../core/utils/debug_log.dart';
 import '../../domain/entities/live_entities.dart';
 import '../../domain/usecases/live_usecases.dart';
@@ -20,7 +20,7 @@ class SessionController extends GetxController {
     required this.getWallet,
     required this.listCoinPackages,
     required this.topUpWallet,
-    required this.socketClient,
+    required this.eventsClient,
     required this.apiClient,
   });
 
@@ -31,7 +31,7 @@ class SessionController extends GetxController {
   final GetWalletUseCase getWallet;
   final ListCoinPackagesUseCase listCoinPackages;
   final TopUpWalletUseCase topUpWallet;
-  final LiveSocketClient socketClient;
+  final LiveEventsClient eventsClient;
   final ApiClient apiClient;
 
   final Rxn<UserProfileEntity> user = Rxn<UserProfileEntity>();
@@ -62,7 +62,7 @@ class SessionController extends GetxController {
       final UserProfileEntity? restored = await getCurrentUser();
       if (restored != null) {
         user.value = restored;
-        await Future.wait(<Future<void>>[refreshWallet(), socketClient.connect()]);
+        await Future.wait(<Future<void>>[refreshWallet(), eventsClient.connect()]);
       }
     } on AppFailure catch (failure) {
       debugLog('Session restore failed: ${failure.message}');
@@ -94,9 +94,9 @@ class SessionController extends GetxController {
     try {
       final AuthSessionEntity session = await action();
       user.value = session.user;
-      // The socket authenticates with the access token, so it can only be
+      // The stream authenticates with the access token, so it can only be
       // opened once the token has been stored.
-      await Future.wait(<Future<void>>[refreshWallet(), socketClient.connect()]);
+      await Future.wait(<Future<void>>[refreshWallet(), eventsClient.connect()]);
       return true;
     } on AppFailure catch (failure) {
       errorMessage.value = failure.message;
@@ -148,7 +148,7 @@ class SessionController extends GetxController {
 
   Future<void> logout() async {
     await logoutUser();
-    await socketClient.disconnect();
+    await eventsClient.disconnect();
     _clearSession();
   }
 
@@ -160,7 +160,7 @@ class SessionController extends GetxController {
 
   @override
   void onClose() {
-    socketClient.dispose();
+    eventsClient.dispose();
     super.onClose();
   }
 }

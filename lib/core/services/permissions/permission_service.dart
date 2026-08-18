@@ -47,12 +47,21 @@ class PermissionService implements PermissionRepository {
 
   Future<PermissionStatusEntity> _request(Permission permission) async {
     final PermissionStatus current = await permission.status;
-    if (current.isGranted ||
-        current.isLimited ||
-        current.isRestricted ||
-        current.isPermanentlyDenied) {
+
+    // Already settled in a way no prompt would change.
+    if (current.isGranted || current.isLimited) {
       return _map(current);
     }
+
+    // Everything else goes through request(). Asking is always safe: when the
+    // user has already made a permanent choice the platform returns it
+    // immediately without showing anything, and when the status was merely
+    // "not yet determined" this is the call that actually shows the prompt.
+    //
+    // Reading `status` alone is not enough to decide: on iOS a permission that
+    // has never been asked for reports the same value as one the user denied,
+    // so trusting it would send a first-time user straight to a Settings
+    // screen they never needed to visit.
     return _map(await permission.request());
   }
 

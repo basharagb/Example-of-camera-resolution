@@ -2,7 +2,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/services/network/api_client.dart';
-import '../../../../core/services/network/live_socket_client.dart';
+import '../../../../core/services/network/live_events_client.dart';
 import '../../../../core/services/permissions/permission_service.dart';
 import '../../../../core/services/storage/token_storage.dart';
 import '../../../camera/domain/repositories/permission_repository.dart';
@@ -24,8 +24,8 @@ class LiveCoreBinding extends Bindings {
   void dependencies() {
     Get.put<TokenStorage>(SecureTokenStorage(), permanent: true);
     Get.put<ApiClient>(ApiClient(Get.find<TokenStorage>()), permanent: true);
-    Get.put<LiveSocketClient>(
-      LiveSocketClient(Get.find<TokenStorage>()),
+    Get.put<LiveEventsClient>(
+      LiveEventsClient(Get.find<TokenStorage>()),
       permanent: true,
     );
 
@@ -63,7 +63,7 @@ class LiveCoreBinding extends Bindings {
         getWallet: GetWalletUseCase(Get.find<WalletRepository>()),
         listCoinPackages: ListCoinPackagesUseCase(Get.find<WalletRepository>()),
         topUpWallet: TopUpWalletUseCase(Get.find<WalletRepository>()),
-        socketClient: Get.find<LiveSocketClient>(),
+        eventsClient: Get.find<LiveEventsClient>(),
         apiClient: Get.find<ApiClient>(),
       ),
       permanent: true,
@@ -78,7 +78,7 @@ class LiveListBinding extends Bindings {
       () => LiveListController(
         listLiveStreams: ListLiveStreamsUseCase(Get.find<LiveStreamRepository>()),
         globalLeaderboard: GlobalLeaderboardUseCase(Get.find<GiftRepository>()),
-        socketClient: Get.find<LiveSocketClient>(),
+        eventsClient: Get.find<LiveEventsClient>(),
       ),
       fenix: true,
     );
@@ -110,7 +110,7 @@ class LiveRoomBinding extends Bindings {
         sendGiftUseCase: SendGiftUseCase(Get.find<GiftRepository>()),
         streamLeaderboard: StreamLeaderboardUseCase(Get.find<GiftRepository>()),
         mediaEngine: Get.find<LiveMediaEngine>(),
-        socketClient: Get.find<LiveSocketClient>(),
+        eventsClient: Get.find<LiveEventsClient>(),
         session: Get.find<SessionController>(),
         requestCameraPermission: RequestCameraPermissionUseCase(
           Get.find<PermissionRepository>(),

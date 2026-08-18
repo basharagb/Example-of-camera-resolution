@@ -6,7 +6,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../../core/config/app_config.dart';
 import '../../../../core/errors/failures.dart';
-import '../../../../core/services/network/live_socket_client.dart';
+import '../../../../core/services/network/live_events_client.dart';
 import '../../../../core/utils/debug_log.dart';
 import '../../../camera/domain/entities/permission_status_entity.dart';
 import '../../../camera/domain/usecases/permission_usecases.dart';
@@ -43,7 +43,7 @@ class LiveRoomController extends GetxController {
     required this.sendGiftUseCase,
     required this.streamLeaderboard,
     required this.mediaEngine,
-    required this.socketClient,
+    required this.eventsClient,
     required this.session,
     required this.requestCameraPermission,
     required this.requestMicrophonePermission,
@@ -63,7 +63,7 @@ class LiveRoomController extends GetxController {
   final SendGiftUseCase sendGiftUseCase;
   final StreamLeaderboardUseCase streamLeaderboard;
   final LiveMediaEngine mediaEngine;
-  final LiveSocketClient socketClient;
+  final LiveEventsClient eventsClient;
   final SessionController session;
   final RequestCameraPermissionUseCase requestCameraPermission;
   final RequestMicrophonePermissionUseCase requestMicrophonePermission;
@@ -82,6 +82,10 @@ class LiveRoomController extends GetxController {
   final RxnString errorMessage = RxnString();
   final RxnString permissionMessage = RxnString();
 
+  /// True only when the platform will no longer show a prompt, so the UI knows
+  /// whether asking again is worth offering or Settings is the only route.
+  final RxBool permissionNeedsSettings = false.obs;
+
   // ---- media state ----
   final RxBool isVideoReady = false.obs;
   final RxBool isMicMuted = false.obs;
@@ -94,6 +98,10 @@ class LiveRoomController extends GetxController {
   final RxList<LeaderboardEntryEntity> topGifters = <LeaderboardEntryEntity>[].obs;
   final RxList<GiftEntity> gifts = <GiftEntity>[].obs;
   final RxInt viewerCount = 0.obs;
+
+  /// The few most recent arrivals, newest first, shown as avatars beside the
+  /// viewer count. Capped because only a handful fit on screen.
+  final RxList<UserProfileEntity> recentViewers = <UserProfileEntity>[].obs;
   final RxInt totalLikes = 0.obs;
   final RxInt totalCoins = 0.obs;
   final Rx<Duration> elapsed = Duration.zero.obs;
@@ -108,7 +116,7 @@ class LiveRoomController extends GetxController {
   Timer? _heartbeatTimer;
   Timer? _elapsedTimer;
   Timer? _reactionFlushTimer;
-  StreamSubscription<LiveSocketEvent>? _socketSubscription;
+  StreamSubscription<LiveRealtimeEvent>? _eventsSubscription;
   StreamSubscription<LiveMediaEvent>? _mediaSubscription;
 
   /// Taps buffered since the last flush. A viewer can produce dozens a second
@@ -124,7 +132,7 @@ class LiveRoomController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _socketSubscription = socketClient.events.listen(_onSocketEvent);
+    _eventsSubscription = eventsClient.events.listen(_onRealtimeEvent);
     _mediaSubscription = mediaEngine.events.listen(_onMediaEvent);
     unawaited(_enterRoom());
     unawaited(_loadGifts());
@@ -137,6 +145,7 @@ class LiveRoomController extends GetxController {
   Future<void> _enterRoom() async {
     isConnecting.value = true;
     errorMessage.value = null;
+    permissionMessage.value = null;
     try {
       if (isHost && !await _ensureBroadcastPermissions()) {
         isConnecting.value = false;
@@ -153,7 +162,7 @@ class LiveRoomController extends GetxController {
       unawaited(WakelockPlus.enable());
       await _connectMedia(room.rtc);
 
-      socketClient.joinRoom(room.stream.id);
+      eventsClient.joinRoom(room.stream.id);
       isLive.value = true;
       _startTimers();
     } on AppFailure catch (failure) {
@@ -186,10 +195,13 @@ class LiveRoomController extends GetxController {
       return true;
     }
 
-    permissionMessage.value =
-        camera.shouldOpenSettings || microphone.shouldOpenSettings
-        ? 'Camera and microphone access are turned off. Enable them in Settings to go live.'
-        : 'Going live needs camera and microphone access.';
+    final bool needsSettings =
+        camera.shouldOpenSettings || microphone.shouldOpenSettings;
+    permissionNeedsSettings.value = needsSettings;
+    permissionMessage.value = needsSettings
+        ? 'Camera and microphone access are turned off for this app. Turn them '
+              'on in Settings to go live.'
+        : 'Going live needs your camera and microphone.';
     return false;
   }
 
@@ -248,7 +260,7 @@ class LiveRoomController extends GetxController {
   // Realtime
   // -------------------------------------------------------------------------
 
-  void _onSocketEvent(LiveSocketEvent event) {
+  void _onRealtimeEvent(LiveRealtimeEvent event) {
     final String? currentId = stream.value?.id;
     switch (event.name) {
       case LiveEvents.chatMessage:
@@ -297,6 +309,17 @@ class LiveRoomController extends GetxController {
         );
         final Map<String, dynamic> viewer =
             LiveModelParsers.asMap(event.payload['viewer']);
+        if (viewer.isNotEmpty) {
+          final UserProfileEntity profile = UserProfileModel.fromJson(viewer);
+          // Re-inserted rather than skipped when already present, so someone
+          // rejoining moves back to the front instead of being invisible.
+          recentViewers
+            ..removeWhere((UserProfileEntity item) => item.id == profile.id)
+            ..insert(0, profile);
+          if (recentViewers.length > 3) {
+            recentViewers.removeRange(3, recentViewers.length);
+          }
+        }
         if (viewer.isNotEmpty && currentId != null) {
           // Rendered as a subtle system line rather than a normal message.
           _appendMessage(
@@ -316,6 +339,8 @@ class LiveRoomController extends GetxController {
           event.payload['viewerCount'],
           viewerCount.value,
         );
+        final String leftId = LiveModelParsers.asString(event.payload['viewerId']);
+        recentViewers.removeWhere((UserProfileEntity item) => item.id == leftId);
 
       case LiveEvents.streamEnded:
         final String endedId = LiveModelParsers.asString(event.payload['streamId']);
@@ -398,10 +423,10 @@ class LiveRoomController extends GetxController {
       return;
     }
     try {
-      // Sent over the socket: the server echoes it back to the room, so the
-      // sender sees their own line through the same path as everyone else and
-      // ordering stays consistent.
-      socketClient.sendChat(id, trimmed);
+      // Posted over REST; the server echoes it back down the realtime stream,
+      // so the sender sees their own line through the same path as everyone
+      // else and ordering stays consistent for the whole room.
+      await sendChatMessage(id, trimmed);
     } on AppFailure catch (failure) {
       errorMessage.value = failure.message;
     }
@@ -422,8 +447,12 @@ class LiveRoomController extends GetxController {
       final int batch = _pendingReactions;
       _pendingReactions = 0;
       if (batch > 0) {
-        // The server caps a batch at 50.
-        socketClient.sendReaction(id, batch.clamp(1, 50));
+        // The server caps a batch at 50. Fire and forget: the hearts already
+        // animated locally, so a failed flush must not interrupt watching.
+        sendReactionUseCase(id, batch.clamp(1, 50)).catchError((Object error) {
+          debugLog('Reaction flush failed', error);
+          return 0;
+        });
       }
     });
   }
@@ -464,7 +493,11 @@ class LiveRoomController extends GetxController {
 
   Future<void> openAppSettings() => openSettings();
 
-  Future<void> retry() => _enterRoom();
+  Future<void> retry() {
+    permissionMessage.value = null;
+    permissionNeedsSettings.value = false;
+    return _enterRoom();
+  }
 
   /// Ends the broadcast for everyone. Only meaningful for the host.
   Future<void> endBroadcast() async {
@@ -489,7 +522,7 @@ class LiveRoomController extends GetxController {
   Future<void> leaveRoom() async {
     final String? id = stream.value?.id;
     if (id != null) {
-      socketClient.leaveRoom(id);
+      eventsClient.leaveRoom(id);
     }
     _stopTimers();
     await mediaEngine.leave();
@@ -509,12 +542,12 @@ class LiveRoomController extends GetxController {
 
   @override
   void onClose() {
-    _socketSubscription?.cancel();
+    _eventsSubscription?.cancel();
     _mediaSubscription?.cancel();
     _stopTimers();
     final String? id = stream.value?.id;
     if (id != null) {
-      socketClient.leaveRoom(id);
+      eventsClient.leaveRoom(id);
     }
     unawaited(mediaEngine.leave());
     unawaited(WakelockPlus.disable());

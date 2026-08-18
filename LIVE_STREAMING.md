@@ -20,7 +20,7 @@ lib/
     theme/live_theme.dart               colours, type, number formatting
     services/
       network/api_client.dart           dio + envelope unwrap + token refresh
-      network/live_socket_client.dart   socket.io, one connection app-wide
+      network/live_events_client.dart   SSE stream, one connection app-wide
       storage/token_storage.dart        keychain / encrypted prefs
     errors/failures.dart                sealed AppFailure, now covers the API
   features/live/
@@ -46,7 +46,7 @@ lib/
 ```
 /            splash — validates the stored session, then routes
 /auth        sign in or register (one form, register reveals extra fields)
-/live        discovery feed, kept current over the socket
+/live        discovery feed, full-screen vertical pager kept current over SSE
 /live/new    name the broadcast before the camera opens
 /live/room   the room — host or viewer, decided by route arguments
 /camera      the original camera, unchanged
@@ -66,6 +66,27 @@ needs — join as host, join as audience, switch camera, renew token. The Agora
 implementation is one file. Nothing in the controllers or widgets imports the
 SDK, so replacing Agora means writing a second implementation.
 
+**Realtime arrives over SSE, not Socket.IO.** This one was forced by the
+platform, and it is worth knowing why before changing it back:
+
+- `socket_io_client` only implements the **WebSocket** transport on native
+  platforms. Its `io_transports.dart` returns a `WebSocketTransport` for every
+  transport name you ask for, so `transports: ['polling', 'websocket']` silently
+  becomes websocket-only. Polling exists only in the web build.
+- The **LiteSpeed proxy** in front of the API does not pass WebSocket upgrades
+  through. Verified from a Node client: `polling` connects, `websocket` times
+  out.
+
+Those two facts together leave no working Socket.IO path from the phone, which
+is what the `Socket connect error: timeout` in the logs actually was. Server-Sent
+Events are an ordinary long-lived HTTP response, which the same proxy streams
+unbuffered — measured at one event per second, arriving on time.
+
+So the app subscribes to `GET /api/v1/events` and everything it sends goes over
+the REST endpoints that already existed. The server echoes each action back down
+the stream, so a sender sees their own message through the same path as everyone
+else and ordering stays consistent.
+
 **Reactions are batched.** A viewer can tap the heart dozens of times a second.
 Hearts animate locally on every tap; the count is flushed to the server once
 per `AppConfig.reactionFlushInterval` (900 ms) as a single request.
@@ -77,9 +98,8 @@ gifts cannot black out the video.
 **Chat follows the tail, unless you scrolled.** New messages auto-scroll only
 while the viewer is already near the bottom, so reading back is not interrupted.
 
-**The sender's own message comes back through the socket.** Chat is emitted over
-the socket rather than optimistically appended, so everyone in the room sees the
-same ordering, including the sender.
+**The discovery feed is a full-screen vertical pager.** One room fills the
+screen and a swipe moves to the next, rather than a grid of thumbnails to scan.
 
 **Hearts skip the sender.** A `reaction:burst` echoed to the person who sent it
 is ignored — they already saw their own hearts locally, and replaying would
@@ -110,6 +130,20 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:4000
 
 `localhost` on an Android emulator means the emulator itself, which is the usual
 reason a local backend appears unreachable.
+
+### Permissions
+
+Going live asks for camera and microphone at the moment you tap **Start
+broadcasting**. If the prompt is declined the gate offers **Allow access**,
+which asks again; only a permanent refusal switches the button to **Open
+settings**.
+
+This is worth stating because the first version got it wrong: it decided from
+`Permission.camera.status` alone, and on iOS a permission that has never been
+requested reports the same value as one the user denied. A first-time user was
+sent straight to a Settings screen without ever seeing a prompt. `_request` now
+always calls `request()` unless access is already granted, and lets the platform
+decide whether a prompt appears.
 
 ### Demo accounts
 

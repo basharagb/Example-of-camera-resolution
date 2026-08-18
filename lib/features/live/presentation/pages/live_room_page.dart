@@ -439,42 +439,98 @@ class _ConnectingGate extends StatelessWidget {
   );
 }
 
+/// Shown when the broadcast could not start for lack of camera or microphone
+/// access.
+///
+/// The primary action depends on whether the platform will still show a
+/// prompt: if it will, the button asks again, and only a permanent refusal
+/// sends the user to Settings. Sending a first-time user to Settings for a
+/// permission they were never asked for is the frustrating version of this
+/// screen.
 class _PermissionGate extends StatelessWidget {
   const _PermissionGate({required this.controller});
 
   final LiveRoomController controller;
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(30),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          const Icon(Icons.videocam_off_rounded, size: 52, color: LiveColors.textMuted),
-          const SizedBox(height: 18),
-          Text(
-            controller.permissionMessage.value ?? '',
-            textAlign: TextAlign.center,
-            style: LiveTextStyles.body,
-          ),
-          const SizedBox(height: 22),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: LiveColors.accent,
-              foregroundColor: LiveColors.accentInk,
+  Widget build(BuildContext context) {
+    final bool needsSettings = controller.permissionNeedsSettings.value;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              width: 78,
+              height: 78,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: LiveColors.accent.withValues(alpha: 0.12),
+              ),
+              child: const Icon(
+                Icons.videocam_rounded,
+                size: 38,
+                color: LiveColors.accent,
+              ),
             ),
-            onPressed: controller.openAppSettings,
-            child: const Text('Open settings'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            child: const Text('Go back'),
-          ),
-        ],
+            const SizedBox(height: 22),
+            Text(
+              needsSettings ? 'Access is turned off' : 'Allow camera and microphone',
+              style: LiveTextStyles.title,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              controller.permissionMessage.value ?? '',
+              textAlign: TextAlign.center,
+              style: LiveTextStyles.caption.copyWith(height: 1.45),
+            ),
+            const SizedBox(height: 26),
+            SizedBox(
+              width: 220,
+              height: 48,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: LiveColors.accent,
+                  foregroundColor: LiveColors.accentInk,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(LiveMetrics.pillRadius),
+                  ),
+                ),
+                onPressed: needsSettings
+                    ? controller.openAppSettings
+                    : controller.retry,
+                child: Text(
+                  needsSettings ? 'Open settings' : 'Allow access',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+            if (needsSettings) ...<Widget>[
+              const SizedBox(height: 6),
+              TextButton(
+                onPressed: controller.retry,
+                style: TextButton.styleFrom(
+                  foregroundColor: LiveColors.textSecondary,
+                ),
+                // After granting access in Settings, iOS restarts the app, but
+                // Android returns to it, so a way back without leaving is worth
+                // having.
+                child: const Text('I have enabled it'),
+              ),
+            ],
+            TextButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              style: TextButton.styleFrom(foregroundColor: LiveColors.textMuted),
+              child: const Text('Not now'),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _ErrorGate extends StatelessWidget {
