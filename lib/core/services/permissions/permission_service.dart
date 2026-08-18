@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../utils/debug_log.dart';
 import '../../../features/camera/domain/entities/permission_status_entity.dart';
 import '../../../features/camera/domain/repositories/permission_repository.dart';
 
@@ -62,7 +63,13 @@ class PermissionService implements PermissionRepository {
     // has never been asked for reports the same value as one the user denied,
     // so trusting it would send a first-time user straight to a Settings
     // screen they never needed to visit.
-    return _map(await permission.request());
+    final PermissionStatus result = await permission.request();
+
+    // Logged because the difference between "never asked" and "refused
+    // earlier" is invisible in the UI but decides whether a prompt can still
+    // appear at all.
+    debugLog('permission $permission: $current -> $result');
+    return _map(result);
   }
 
   PermissionStatusEntity _combine(List<PermissionStatus> statuses) {
