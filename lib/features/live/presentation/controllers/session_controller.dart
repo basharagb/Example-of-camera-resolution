@@ -93,7 +93,7 @@ class SessionController extends GetxController {
     if (isSignedIn) return Future<bool>.value(true);
     if (!AppConfig.demoMode) return Future<bool>.value(false);
     return _demoAuthentication ??= _authenticate(
-      () => loginUser(identifier: 'bashar', password: 'Live12345'),
+      () => loginUser(identifier: 'bashar', password: 'EliteLive2026!'),
     ).whenComplete(() => _demoAuthentication = null);
   }
 

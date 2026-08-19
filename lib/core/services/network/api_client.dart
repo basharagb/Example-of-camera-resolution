@@ -59,8 +59,8 @@ class ApiClient {
     Map<String, dynamic>? query,
     bool authenticated = true,
   }) => _send(
-    () => _dio.get<dynamic>(
-      path,
+    (String apiRoot) => _dio.get<dynamic>(
+      '$apiRoot$path',
       queryParameters: query,
       options: Options(extra: <String, dynamic>{'skipAuth': !authenticated}),
     ),
@@ -73,8 +73,8 @@ class ApiClient {
     Object? body,
     bool authenticated = true,
   }) => _send(
-    () => _dio.post<dynamic>(
-      path,
+    (String apiRoot) => _dio.post<dynamic>(
+      '$apiRoot$path',
       data: body,
       options: Options(extra: <String, dynamic>{'skipAuth': !authenticated}),
     ),
@@ -83,31 +83,49 @@ class ApiClient {
   );
 
   Future<Map<String, dynamic>> _send(
-    Future<Response<dynamic>> Function() request, {
+    Future<Response<dynamic>> Function(String apiRoot) request, {
     required String path,
     required bool authenticated,
     bool isRetry = false,
-    bool isEndpointRetry = false,
   }) async {
     late final Response<dynamic> response;
+    final String primaryEndpoint = AppConfig.apiBaseUrl;
     try {
-      response = await request();
+      response = await request('$primaryEndpoint${AppConfig.apiPath}');
+      AppConfig.useEndpoint(primaryEndpoint);
     } on DioException catch (error) {
-      if (!isEndpointRetry &&
-          AppConfig.isUsingLocalEndpoint &&
-          _isConnectionFailure(error)) {
-        AppConfig.usePublicEndpoint();
-        _dio.options.baseUrl = AppConfig.apiRoot;
-        debugLog('LAN backend unavailable; switched to public endpoint');
-        return _send(
-          request,
-          path: path,
-          authenticated: authenticated,
-          isRetry: isRetry,
-          isEndpointRetry: true,
-        );
+      if (!_isConnectionFailure(error)) {
+        throw _mapTransportError(error, path);
       }
-      throw _mapTransportError(error, path);
+
+      // Fail over in both directions. The old code only moved LAN -> public,
+      // so one failed probe during a server restart left an office phone stuck
+      // on the unreachable public address for the rest of the process.
+      final String alternateEndpoint = AppConfig.hasExplicitApiOverride
+          ? primaryEndpoint
+          : (primaryEndpoint == AppConfig.localApiBaseUrl
+                ? AppConfig.publicApiBaseUrl
+                : AppConfig.localApiBaseUrl);
+      if (alternateEndpoint == primaryEndpoint) {
+        throw _mapTransportError(error, path);
+      }
+      try {
+        response = await request('$alternateEndpoint${AppConfig.apiPath}');
+        AppConfig.useEndpoint(alternateEndpoint);
+        _dio.options.baseUrl = AppConfig.apiRoot;
+        debugLog(
+          alternateEndpoint == AppConfig.localApiBaseUrl
+              ? 'Public backend unavailable; switched to LAN endpoint'
+              : 'LAN backend unavailable; switched to public endpoint',
+        );
+      } on DioException catch (alternateError) {
+        // Keep the original choice. On the next user action both candidates
+        // are tried again, which lets the app recover after either endpoint
+        // comes back without requiring a restart.
+        AppConfig.useEndpoint(primaryEndpoint);
+        _dio.options.baseUrl = AppConfig.apiRoot;
+        throw _mapTransportError(alternateError, path);
+      }
     }
 
     final int status = response.statusCode ?? 500;
@@ -134,7 +152,6 @@ class ApiClient {
           path: path,
           authenticated: authenticated,
           isRetry: true,
-          isEndpointRetry: isEndpointRetry,
         );
       }
       onSessionExpired?.call();
@@ -165,7 +182,7 @@ class ApiClient {
     }
     try {
       final Response<dynamic> response = await _dio.post<dynamic>(
-        '/auth/refresh',
+        '${AppConfig.apiRoot}/auth/refresh',
         data: <String, dynamic>{'refreshToken': refreshToken},
         options: Options(extra: <String, dynamic>{'skipAuth': true}),
       );

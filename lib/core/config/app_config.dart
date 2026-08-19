@@ -38,6 +38,10 @@ abstract final class AppConfig {
   static String get apiBaseUrl => _apiBaseUrl;
   static String get apiRoot => '$apiBaseUrl$apiPath';
   static bool get isUsingLocalEndpoint => _isUsingLocalEndpoint;
+  static bool get hasExplicitApiOverride => _overrideApiBaseUrl.isNotEmpty;
+  static String get alternateApiBaseUrl => hasExplicitApiOverride
+      ? _overrideApiBaseUrl
+      : (_isUsingLocalEndpoint ? publicApiBaseUrl : localApiBaseUrl);
 
   /// Resolves the endpoint before dependency injection creates any network
   /// clients. The LAN probe is intentionally sub-second so an off-network
@@ -76,10 +80,22 @@ abstract final class AppConfig {
   /// Called by the HTTP client if the selected LAN endpoint disappears, such
   /// as when a phone switches from Wi-Fi to mobile data while the app is open.
   static void usePublicEndpoint() {
-    _apiBaseUrl = _overrideApiBaseUrl.isEmpty
-        ? publicApiBaseUrl
-        : _overrideApiBaseUrl;
-    _isUsingLocalEndpoint = false;
+    useEndpoint(
+      _overrideApiBaseUrl.isEmpty ? publicApiBaseUrl : _overrideApiBaseUrl,
+    );
+  }
+
+  static void useLocalEndpoint() => useEndpoint(localApiBaseUrl);
+
+  /// Records the endpoint that most recently completed a real request.
+  ///
+  /// The HTTP client still gives every request one attempt against the other
+  /// endpoint. That bidirectional retry is important when the app was opened
+  /// while the server was restarting, or when the phone moves between office
+  /// Wi-Fi and another network without being killed first.
+  static void useEndpoint(String endpoint) {
+    _apiBaseUrl = endpoint;
+    _isUsingLocalEndpoint = endpoint == localApiBaseUrl;
   }
 
   /// The host pings the server on this cadence. The server closes a room after

@@ -36,7 +36,13 @@ class VideoFeedController extends GetxController {
     errorMessage.value = null;
     try {
       videos.assignAll(await loadFeed());
-      if (videos.isNotEmpty) unawaited(repository.recordView(videos.first.id));
+      if (videos.isNotEmpty) {
+        unawaited(
+          repository.recordView(videos.first.id).catchError((Object error) {
+            debugLog('Initial view tracking failed', error);
+          }),
+        );
+      }
     } catch (error, stackTrace) {
       debugLog('Video feed failed', error, stackTrace);
       errorMessage.value = 'تعذر تحميل المقاطع';
