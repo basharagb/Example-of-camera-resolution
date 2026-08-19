@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import '../../../../core/theme/live_theme.dart';
 import '../../domain/entities/live_entities.dart';
 import '../controllers/live_room_controller.dart';
+import 'gift_artwork.dart';
 
 /// Plays incoming gifts one at a time.
 ///
@@ -151,7 +152,7 @@ class _Banner extends StatelessWidget {
             ],
           ),
           const SizedBox(width: 14),
-          Text(gift.emoji, style: const TextStyle(fontSize: 34)),
+          _AnimatedGiftArtwork(gift: gift, size: 54),
           const SizedBox(width: 8),
           _ComboCounter(quantity: event.quantity, tint: tint),
         ],
@@ -188,7 +189,30 @@ class _Takeover extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          _PulsingEmoji(emoji: gift.emoji),
+          Stack(
+            alignment: Alignment.center,
+            children: <Widget>[
+              Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: <Color>[tint.withValues(alpha: .42), Colors.transparent],
+                  ),
+                ),
+              ),
+              for (int index = 0; index < 8; index++)
+                Transform.rotate(
+                  angle: index * .785,
+                  child: Transform.translate(
+                    offset: const Offset(0, -82),
+                    child: Icon(Icons.auto_awesome, color: tint, size: index.isEven ? 14 : 9),
+                  ),
+                ),
+              _AnimatedGiftArtwork(gift: gift, size: 138),
+            ],
+          ),
           const SizedBox(height: 14),
           Text(
             gift.name.toUpperCase(),
@@ -216,16 +240,17 @@ class _Takeover extends StatelessWidget {
 
 /// A slow breathing scale, enough to read as "alive" without distracting from
 /// the video behind it.
-class _PulsingEmoji extends StatefulWidget {
-  const _PulsingEmoji({required this.emoji});
+class _AnimatedGiftArtwork extends StatefulWidget {
+  const _AnimatedGiftArtwork({required this.gift, required this.size});
 
-  final String emoji;
+  final GiftEntity gift;
+  final double size;
 
   @override
-  State<_PulsingEmoji> createState() => _PulsingEmojiState();
+  State<_AnimatedGiftArtwork> createState() => _AnimatedGiftArtworkState();
 }
 
-class _PulsingEmojiState extends State<_PulsingEmoji>
+class _AnimatedGiftArtworkState extends State<_AnimatedGiftArtwork>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
@@ -239,11 +264,20 @@ class _PulsingEmojiState extends State<_PulsingEmoji>
   }
 
   @override
-  Widget build(BuildContext context) => ScaleTransition(
-    scale: Tween<double>(begin: 0.88, end: 1.12).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    ),
-    child: Text(widget.emoji, style: const TextStyle(fontSize: 78)),
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    child: GiftArtwork(gift: widget.gift, size: widget.size),
+    builder: (BuildContext context, Widget? child) {
+      final double wave = Curves.easeInOut.transform(_controller.value);
+      final bool travels = <String>{'drive', 'fly', 'sail', 'swim'}.contains(widget.gift.animationType);
+      return Transform.translate(
+        offset: travels ? Offset((wave - .5) * 30, (1 - wave) * 8) : Offset(0, (wave - .5) * 9),
+        child: Transform.rotate(
+          angle: widget.gift.animationType == 'galaxy' ? _controller.value * .16 : 0,
+          child: Transform.scale(scale: .9 + wave * .16, child: child),
+        ),
+      );
+    },
   );
 }
 
