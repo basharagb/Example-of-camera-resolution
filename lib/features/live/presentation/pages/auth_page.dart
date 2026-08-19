@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/live_theme.dart';
 import '../../../../routes/app_routes.dart';
 import '../controllers/session_controller.dart';
@@ -50,6 +51,14 @@ class _AuthFormState extends State<_AuthForm> {
     super.dispose();
   }
 
+  /// The demo has no accounts, so this screen is never on the way to anything.
+  /// It stays reachable, and this is the way out of it.
+  Future<void> _continueWithoutAnAccount() async {
+    if (await _session.ensureReadyForLive()) {
+      Get.offAllNamed<void>(AppRoutes.home);
+    }
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
@@ -85,7 +94,13 @@ class _AuthFormState extends State<_AuthForm> {
           children: <Widget>[
             SizedBox(height: MediaQuery.of(context).size.height * 0.1),
             const _Brand(),
-            const SizedBox(height: 36),
+            const SizedBox(height: 28),
+
+            if (AppConfig.demoMode) ...<Widget>[
+              _DemoNotice(onContinue: _continueWithoutAnAccount),
+              const SizedBox(height: 20),
+            ],
+            const SizedBox(height: 8),
 
             if (_isRegistering) ...<Widget>[
               _Field(
@@ -346,6 +361,59 @@ class _Field extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: LiveColors.live),
       ),
+    ),
+  );
+}
+
+/// Shown only in the local build. There is no server to reach and no account
+/// to create, so the form below is a demonstration and this is the way past
+/// it.
+class _DemoNotice extends StatelessWidget {
+  const _DemoNotice({required this.onContinue});
+
+  final Future<void> Function() onContinue;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+    decoration: BoxDecoration(
+      color: LiveColors.surface,
+      borderRadius: BorderRadius.circular(LiveMetrics.cardRadius),
+      border: Border.all(color: LiveColors.accent.withValues(alpha: 0.45)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            const Icon(
+              Icons.offline_bolt_rounded,
+              size: 17,
+              color: LiveColors.accent,
+            ),
+            const SizedBox(width: 9),
+            Text(
+              'Demo mode',
+              style: LiveTextStyles.title.copyWith(fontSize: 15),
+            ),
+          ],
+        ),
+        const SizedBox(height: 7),
+        Text(
+          'This build runs entirely on your device. No server, no sign-in: '
+          'any credentials work, or skip the form completely.',
+          style: LiveTextStyles.caption.copyWith(height: 1.45),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: onContinue,
+            icon: const Icon(Icons.arrow_forward_rounded, size: 17),
+            label: const Text('Continue without an account'),
+            style: TextButton.styleFrom(foregroundColor: LiveColors.accent),
+          ),
+        ),
+      ],
     ),
   );
 }

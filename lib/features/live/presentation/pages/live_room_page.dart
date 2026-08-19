@@ -152,7 +152,7 @@ class _RoomBody extends StatelessWidget {
           right: 0,
           bottom: 0,
           child: controller.isHost
-              ? _HostToolbar(controller: controller)
+              ? _HostToolbar(controller: controller, session: session)
               : _ViewerToolbar(controller: controller, session: session),
         ),
 
@@ -288,11 +288,18 @@ class _ViewerToolbarState extends State<_ViewerToolbar> {
   }
 }
 
-/// The host's bar: camera and microphone controls, plus ending the broadcast.
+/// The host's bar: camera and microphone controls, the gift catalogue, and
+/// ending the broadcast.
+///
+/// A host can send into their own room. On a real platform that is unusual; on
+/// a single demo device it is the only way to see a gift travel the whole path
+/// - wallet debited, animation played, podium updated, diamonds credited back
+/// to the host - without a second phone in the room.
 class _HostToolbar extends StatelessWidget {
-  const _HostToolbar({required this.controller});
+  const _HostToolbar({required this.controller, required this.session});
 
   final LiveRoomController controller;
+  final SessionController session;
 
   @override
   Widget build(BuildContext context) => SafeArea(
@@ -332,6 +339,15 @@ class _HostToolbar extends StatelessWidget {
           _RoundAction(
             icon: Icons.cameraswitch_rounded,
             onTap: controller.switchCamera,
+          ),
+          _RoundAction(
+            icon: Icons.card_giftcard_rounded,
+            tint: LiveColors.coin,
+            onTap: () => GiftSheet.show(
+              context: context,
+              controller: controller,
+              session: session,
+            ),
           ),
           _RoundAction(
             icon: Icons.stop_rounded,

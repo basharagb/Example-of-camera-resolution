@@ -47,6 +47,11 @@ abstract final class AppConfig {
   /// clients. The LAN probe is intentionally sub-second so an off-network
   /// launch is not held on the splash screen.
   static Future<void> initializeEndpoint() async {
+    if (demoMode) {
+      // Nothing to resolve: the demo build serves itself. Probing here would
+      // only delay the first frame waiting for a server it will never call.
+      return;
+    }
     if (_overrideApiBaseUrl.isNotEmpty) {
       _apiBaseUrl = _overrideApiBaseUrl;
       _isUsingLocalEndpoint = _overrideApiBaseUrl == localApiBaseUrl;

@@ -3,7 +3,41 @@
 TikTok-style live broadcasting with virtual gifting, added to the existing
 capability-aware camera app. Flutter, GetX, feature-first clean architecture.
 
-Backend: **https://live.elite-center-ld.com** (see `../backend/README.md`)
+Backend: **none required.** The app ships with a complete backend of its own
+that runs in memory on the device — see [Runs with no
+backend](#runs-with-no-backend). A server build is still one flag away, and is
+documented in `../backend/README.md`.
+
+---
+
+## Runs with no backend
+
+`flutter run` gives you the whole product with no server, no database, no
+sign-in and no internet connection. `AppConfig.demoMode` is on by default and
+`LiveCoreBinding` wires the five repositories and the realtime client to
+`DemoLiveBackend` instead of HTTP. Nothing else in the app changes: the
+controllers, use cases and widgets run their real code paths against the same
+interfaces.
+
+What that gets you on one device, offline:
+
+| | |
+|---|---|
+| **Sign-in** | None. A profile and a 250,000-coin wallet exist from the first frame; the sign-in screen is never on the way to anything. |
+| **Feed** | Six rooms whose video is a bundled clip, so you can watch a "broadcast" without a second phone. |
+| **Going live** | Real camera, real preview, real controls. The frames stay on the device — there is no SFU to publish them to. |
+| **Gifts** | All 21, all four tiers, all animations. The host toolbar has the gift button too, so **you can send to your own room**: coins out, animation plays, podium moves, half the coins come back as diamonds. |
+| **Chat, hearts, viewers** | Live. A room you are inside gets a paced crowd — arrivals, chat, reactions and gifts — so it behaves like a populated room rather than an empty channel. |
+| **Wallet** | Top-ups are instant and free. |
+
+State lives for the life of the process and resets on a cold start, which is
+what a demo wants: every run starts from the same place.
+
+To run against a real server instead:
+
+```bash
+flutter run --dart-define=DEMO_MODE=false
+```
 
 ---
 
@@ -32,8 +66,12 @@ lib/
     data/
       models/live_models.dart           the only place JSON is parsed
       datasources/live_remote_data_source.dart   the only place paths appear
-      datasources/agora_media_engine.dart        the only Agora import
-      repositories/live_repositories_impl.dart
+      datasources/livekit_media_engine.dart      the only LiveKit import
+      repositories/live_repositories_impl.dart   REST implementations
+      local/demo_live_backend.dart      the whole server, in memory
+      local/demo_catalogue.dart         gifts, packages, the crowd
+      local/demo_live_events_client.dart  the realtime feed, in memory
+      local/local_live_repositories.dart  the same contracts, served locally
     presentation/
       controllers/   session, live list, live room
       pages/         splash, auth, live list, go live, live room
@@ -115,17 +153,19 @@ confirm first, because ending closes the room for everyone watching.
 
 ```bash
 flutter pub get
-flutter run                                   # uses the deployed backend
+flutter run                                   # local backend, nothing to start
 ```
 
-Point it somewhere else with a define:
+Against a server:
 
 ```bash
+flutter run --dart-define=DEMO_MODE=false     # the deployed backend
+
 # Android emulator reaching a server on this machine
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
+flutter run --dart-define=DEMO_MODE=false --dart-define=API_BASE_URL=http://10.0.2.2:4000
 
 # physical device on the same network
-flutter run --dart-define=API_BASE_URL=http://192.168.1.20:4000
+flutter run --dart-define=DEMO_MODE=false --dart-define=API_BASE_URL=http://192.168.1.20:4000
 ```
 
 `localhost` on an Android emulator means the emulator itself, which is the usual
@@ -145,31 +185,40 @@ sent straight to a Settings screen without ever seeing a prompt. `_request` now
 always calls `request()` unless access is already granted, and lets the platform
 decide whether a prompt appears.
 
-### Demo accounts
+### Accounts
 
-The deployed backend has `bashar` and `sara`, password `EliteLive2026!`, each
-starting with 1,000 coins. Sign in as one on a phone and the other on a second
-device (or register a new account — registration also grants 1,000 coins) to see
-a gift travel between them.
+There are none in the default build, and none are needed. The local backend
+accepts any credentials if you reach the sign-in screen deliberately, and the
+screen itself offers **Continue without an account**.
 
-To try the gifting loop on a single device: go live as `bashar`, then sign in as
-`sara` elsewhere and send a crown.
+With `DEMO_MODE=false`, the deployed backend has `bashar` and `sara`, password
+`EliteLive2026!`, each starting with 1,000 coins. Sign in as one on a phone and
+the other on a second device to see a gift travel between them.
+
+### Sending a gift to yourself
+
+Go live, tap the gift button in the host toolbar, pick anything, send. The
+coins leave your wallet, the animation plays over your own camera, your name
+enters the podium and half the coins return as diamonds — the full loop on one
+device, which is exactly what a second phone would otherwise be for.
 
 ---
 
-## Video is currently a placeholder
+## About the video
 
-The backend runs with `RTC_PROVIDER=mock` because no Agora account is connected
-yet. Everything else is real: rooms open and close, chat and gifts and hearts
-travel between devices in real time, coins are debited, diamonds are credited
-and the leaderboards update.
+The app reads the RTC provider from the credentials issued per room, so what it
+renders depends on where the room came from:
 
-Where video would be, the app shows a labelled placeholder — deliberately, since
-a black rectangle reads as a bug. `_MockSurface` in `live_video_surface.dart`.
+- **Local rooms** are always `mock`. A host sees their real camera full-screen;
+  a seeded room plays its bundled clip. No SFU is involved on either side, which
+  is what makes the demo work with the network off.
+- **Server rooms** carry a real LiveKit URL and token when the backend has one,
+  and the same `mock` marker when it does not — in which case the app shows a
+  labelled placeholder rather than a black rectangle that reads as a bug.
+  `_MockSurface` in `live_video_surface.dart`.
 
-Turning on real video is a server-side env change only, described in
-`../backend/README.md`. **No app rebuild is required**: the app reads the
-provider from the credentials the server issues per room.
+Turning on real video for a server build is an env change only, described in
+`../backend/README.md`; no app rebuild is required.
 
 ---
 
@@ -210,9 +259,9 @@ feature and cover live streaming too.
 
 - **Stream thumbnails.** The feed shows a stable per-host tinted card with the
   host's initial. Real thumbnails need a snapshot from the media service.
-- **Gift artwork.** The catalogue ships emoji in `iconUrl`; `animationAsset` is
-  the field a Lottie or Rive file goes in, and the tier system already drives
-  how loud each gift's presentation is.
+- **Gift artwork.** The catalogue ships transparent PNGs driven by code-based
+  motion; `animationAsset` is also where a Lottie or Rive file would go, and the
+  tier system already drives how loud each gift's presentation is.
 - **Avatars.** The model and widgets handle `avatarUrl`, but there is no upload
   endpoint yet, so everyone renders as an initial.
 - **Payments.** See the warning in the backend README.

@@ -27,6 +27,28 @@ class LiveRealtimeEvent {
   final Map<String, dynamic> payload;
 }
 
+/// The realtime feed, as the controllers see it.
+///
+/// Extracting this interface is what lets the app run entirely on-device: the
+/// SSE implementation below talks to the API, while the demo build swaps in an
+/// in-memory publisher without a single controller changing.
+abstract interface class LiveEventsClient {
+  Stream<LiveRealtimeEvent> get events;
+  Stream<bool> get connectionState;
+  bool get isConnected;
+
+  Future<void> connect();
+
+  /// Subscribes to one room's events. Only one room is subscribed at a time.
+  void joinRoom(String streamId);
+
+  void leaveRoom(String streamId);
+
+  Future<void> disconnect();
+
+  Future<void> dispose();
+}
+
 /// The app's realtime feed, over Server-Sent Events.
 ///
 /// SSE rather than Socket.IO for a concrete reason: the Dart Socket.IO client
@@ -40,8 +62,8 @@ class LiveRealtimeEvent {
 /// reactions - already has a REST endpoint, and the server echoes the result
 /// back down this stream, so ordering stays consistent for sender and viewers
 /// alike.
-class LiveEventsClient {
-  LiveEventsClient(this._tokenStorage);
+class SseLiveEventsClient implements LiveEventsClient {
+  SseLiveEventsClient(this._tokenStorage);
 
   final TokenStorage _tokenStorage;
 
@@ -62,15 +84,20 @@ class LiveEventsClient {
   int _attempt = 0;
   Timer? _retryTimer;
 
+  @override
   Stream<LiveRealtimeEvent> get events => _events.stream;
+  @override
   Stream<bool> get connectionState => _connection.stream;
+  @override
   bool get isConnected => _connected;
 
+  @override
   Future<void> connect() => _open();
 
   /// Subscribing to a room means reconnecting with it in the query, because one
   /// connection carries exactly one room plus the private and discovery
   /// channels.
+  @override
   void joinRoom(String streamId) {
     if (_streamId == streamId && _connected) {
       return;
@@ -79,6 +106,7 @@ class LiveEventsClient {
     unawaited(_open());
   }
 
+  @override
   void leaveRoom(String streamId) {
     if (_streamId != streamId) {
       return;
@@ -235,6 +263,7 @@ class LiveEventsClient {
     _setConnected(false);
   }
 
+  @override
   Future<void> disconnect() async {
     _manuallyClosed = true;
     _retryTimer?.cancel();
@@ -242,6 +271,7 @@ class LiveEventsClient {
     await _closeCurrent();
   }
 
+  @override
   Future<void> dispose() async {
     _disposed = true;
     await disconnect();

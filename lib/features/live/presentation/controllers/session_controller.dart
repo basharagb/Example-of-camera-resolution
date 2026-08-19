@@ -33,7 +33,10 @@ class SessionController extends GetxController {
   final ListCoinPackagesUseCase listCoinPackages;
   final TopUpWalletUseCase topUpWallet;
   final LiveEventsClient eventsClient;
-  final ApiClient apiClient;
+
+  /// Absent in the local demo build, which has no HTTP client to report an
+  /// expired session from.
+  final ApiClient? apiClient;
 
   final Rxn<UserProfileEntity> user = Rxn<UserProfileEntity>();
   final Rx<WalletEntity> wallet = const WalletEntity.empty().obs;
@@ -50,7 +53,7 @@ class SessionController extends GetxController {
     super.onInit();
     // A 401 that survives a refresh means the stored session is unusable, so
     // the app drops back to sign-in rather than looping on failed requests.
-    apiClient.onSessionExpired = () {
+    apiClient?.onSessionExpired = () {
       debugLog('Session expired, signing out');
       _clearSession();
     };
@@ -69,9 +72,9 @@ class SessionController extends GetxController {
           eventsClient.connect(),
         ]);
       } else if (AppConfig.demoMode) {
-        // The bundled demo opens on the feed, while this seeded account is
-        // authenticated silently in the background so LIVE and gifts work on
-        // the first tap without making the reviewer fill a form.
+        // Nobody signs in to the demo. The local backend hands back its own
+        // profile, so LIVE, chat and gifts work on the first tap and the
+        // sign-in screen is never reached.
         await ensureReadyForLive();
       }
     } on AppFailure catch (failure) {
@@ -87,8 +90,11 @@ class SessionController extends GetxController {
       );
 
   /// Guarantees that a LIVE button never navigates with an anonymous session.
-  /// The startup login and a very fast user tap share the same Future, avoiding
-  /// duplicate login requests and the silent 401 that used to follow.
+  /// The startup sign-in and a very fast user tap share the same Future, so a
+  /// tap during launch cannot produce a second one.
+  ///
+  /// Against the local backend this resolves immediately and always succeeds;
+  /// against a server it is the seeded demo account.
   Future<bool> ensureReadyForLive() {
     if (isSignedIn) return Future<bool>.value(true);
     if (!AppConfig.demoMode) return Future<bool>.value(false);

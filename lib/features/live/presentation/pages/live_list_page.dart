@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/live_theme.dart';
 import '../../../../routes/app_routes.dart';
 import '../../domain/entities/live_entities.dart';
@@ -456,10 +457,14 @@ class _TopBar extends StatelessWidget {
                 value: 'refresh',
                 child: Text('Refresh', style: LiveTextStyles.body),
               ),
-              PopupMenuItem<String>(
-                value: 'logout',
-                child: Text('Sign out', style: LiveTextStyles.body),
-              ),
+              // There is nothing to sign out of in the local build: the
+              // account exists on the device and the sign-in screen is not
+              // part of the flow.
+              if (!AppConfig.demoMode)
+                PopupMenuItem<String>(
+                  value: 'logout',
+                  child: Text('Sign out', style: LiveTextStyles.body),
+                ),
             ],
           ),
         ],

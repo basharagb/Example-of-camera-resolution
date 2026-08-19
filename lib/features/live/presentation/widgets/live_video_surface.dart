@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/live_theme.dart';
 import '../../data/datasources/livekit_media_engine.dart';
 import '../../domain/entities/live_entities.dart';
@@ -156,9 +157,9 @@ class _DemoLiveSurfaceState extends State<_DemoLiveSurface> {
   }
 }
 
-/// Full-screen local preview for a host using a mock RTC backend. The badge is
-/// intentional: the camera is real, but without an RTC provider these frames
-/// are not being sent to another device.
+/// Full-screen local preview for a host on a room with no SFU behind it. The
+/// badge is intentional: the camera is real, but these frames stay on this
+/// device rather than reaching an audience.
 class _MockHostSurface extends StatelessWidget {
   const _MockHostSurface({required this.preview});
 
@@ -183,7 +184,9 @@ class _MockHostSurface extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               child: Text(
-                'Local preview only • Media server is not connected',
+                AppConfig.demoMode
+                    ? 'Demo mode • your camera is live on this device'
+                    : 'Local preview only • Media server is not connected',
                 textAlign: TextAlign.center,
                 style: LiveTextStyles.caption.copyWith(fontSize: 10.5),
               ),
@@ -300,7 +303,9 @@ class _MockSurface extends StatelessWidget {
               child: Text(
                 controller.isHost
                     ? 'Camera preview could not start'
-                    : 'Live video server is not connected',
+                    : (AppConfig.demoMode
+                          ? 'This demo room has no video'
+                          : 'Live video server is not connected'),
                 style: LiveTextStyles.caption.copyWith(fontSize: 11),
               ),
             ),
