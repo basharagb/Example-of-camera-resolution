@@ -60,7 +60,10 @@ abstract interface class GiftRepository {
     required int quantity,
   });
 
-  Future<List<LeaderboardEntryEntity>> streamLeaderboard(String streamId, {int? limit});
+  Future<List<LeaderboardEntryEntity>> streamLeaderboard(
+    String streamId, {
+    int? limit,
+  });
 
   Future<List<LeaderboardEntryEntity>> globalLeaderboard({
     String board,

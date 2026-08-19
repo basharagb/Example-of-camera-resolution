@@ -88,14 +88,19 @@ class _CoinTopUpSheetState extends State<CoinTopUpSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Row(
                 children: <Widget>[
-                  Text('Get coins', style: LiveTextStyles.displayLarge.copyWith(fontSize: 22)),
+                  Text(
+                    'Get coins',
+                    style: LiveTextStyles.displayLarge.copyWith(fontSize: 22),
+                  ),
                   const Spacer(),
                   const Text('🪙', style: TextStyle(fontSize: 18)),
                   const SizedBox(width: 6),
                   Obx(
                     () => Text(
                       formatCompact(widget.session.wallet.value.coinBalance),
-                      style: LiveTextStyles.title.copyWith(color: LiveColors.coin),
+                      style: LiveTextStyles.title.copyWith(
+                        color: LiveColors.coin,
+                      ),
                     ),
                   ),
                 ],
@@ -103,7 +108,8 @@ class _CoinTopUpSheetState extends State<CoinTopUpSheet> {
             ),
             const SizedBox(height: 14),
             Obx(() {
-              final List<CoinPackageEntity> packages = widget.session.coinPackages;
+              final List<CoinPackageEntity> packages =
+                  widget.session.coinPackages;
               if (packages.isEmpty) {
                 return const Padding(
                   padding: EdgeInsets.all(30),
@@ -163,7 +169,10 @@ class _PackageCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           if (isBusy)
-            const CircularProgressIndicator(strokeWidth: 2.2, color: LiveColors.coin)
+            const CircularProgressIndicator(
+              strokeWidth: 2.2,
+              color: LiveColors.coin,
+            )
           else ...<Widget>[
             const Text('🪙', style: TextStyle(fontSize: 26)),
             const SizedBox(height: 6),
@@ -190,7 +199,11 @@ class _SandboxNotice extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: <Widget>[
-      const Icon(Icons.info_outline_rounded, size: 15, color: LiveColors.textMuted),
+      const Icon(
+        Icons.info_outline_rounded,
+        size: 15,
+        color: LiveColors.textMuted,
+      ),
       const SizedBox(width: 8),
       Expanded(
         child: Text(

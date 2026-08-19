@@ -131,7 +131,8 @@ class _HeartsPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final _Heart heart in hearts) {
       final double progress =
-          now.difference(heart.bornAt).inMilliseconds / heart.lifetime.inMilliseconds;
+          now.difference(heart.bornAt).inMilliseconds /
+          heart.lifetime.inMilliseconds;
       if (progress < 0 || progress > 1) {
         continue;
       }
@@ -151,7 +152,8 @@ class _HeartsPainter extends CustomPainter {
           ? (1 - progress) / 0.35
           : 1;
       final double scale =
-          heart.scale * (progress < 0.12 ? Curves.easeOutBack.transform(progress / 0.12) : 1);
+          heart.scale *
+          (progress < 0.12 ? Curves.easeOutBack.transform(progress / 0.12) : 1);
 
       canvas.save();
       canvas.translate(x, y);

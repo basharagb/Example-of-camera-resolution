@@ -43,7 +43,8 @@ class LiveRoomPage extends GetView<LiveRoomController> {
           if (controller.permissionMessage.value != null) {
             return _PermissionGate(controller: controller);
           }
-          if (controller.errorMessage.value != null && controller.stream.value == null) {
+          if (controller.errorMessage.value != null &&
+              controller.stream.value == null) {
             return _ErrorGate(controller: controller);
           }
           if (controller.isConnecting.value) {
@@ -129,7 +130,8 @@ class _RoomBody extends StatelessWidget {
 
         Positioned.fill(
           child: Obx(
-            () => FloatingHeartsOverlay(burstCount: controller.heartBursts.value),
+            () =>
+                FloatingHeartsOverlay(burstCount: controller.heartBursts.value),
           ),
         ),
 
@@ -246,7 +248,9 @@ class _ViewerToolbarState extends State<_ViewerToolbar> {
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.45),
                   borderRadius: BorderRadius.circular(LiveMetrics.pillRadius),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.16),
+                  ),
                 ),
                 child: TextField(
                   controller: _input,
@@ -308,7 +312,9 @@ class _HostToolbar extends StatelessWidget {
               icon: controller.isMicMuted.value
                   ? Icons.mic_off_rounded
                   : Icons.mic_rounded,
-              tint: controller.isMicMuted.value ? LiveColors.live : Colors.white,
+              tint: controller.isMicMuted.value
+                  ? LiveColors.live
+                  : Colors.white,
               onTap: controller.toggleMicrophone,
             ),
           ),
@@ -317,7 +323,9 @@ class _HostToolbar extends StatelessWidget {
               icon: controller.isCameraOn.value
                   ? Icons.videocam_rounded
                   : Icons.videocam_off_rounded,
-              tint: controller.isCameraOn.value ? Colors.white : LiveColors.live,
+              tint: controller.isCameraOn.value
+                  ? Colors.white
+                  : LiveColors.live,
               onTap: controller.toggleCamera,
             ),
           ),
@@ -430,7 +438,10 @@ class _ConnectingGate extends StatelessWidget {
         SizedBox(
           width: 38,
           height: 38,
-          child: CircularProgressIndicator(strokeWidth: 2.6, color: LiveColors.accent),
+          child: CircularProgressIndicator(
+            strokeWidth: 2.6,
+            color: LiveColors.accent,
+          ),
         ),
         SizedBox(height: 18),
         Text('Setting up the room', style: LiveTextStyles.caption),
@@ -477,7 +488,9 @@ class _PermissionGate extends StatelessWidget {
             ),
             const SizedBox(height: 22),
             Text(
-              needsSettings ? 'Access is turned off' : 'Allow camera and microphone',
+              needsSettings
+                  ? 'Access is turned off'
+                  : 'Allow camera and microphone',
               style: LiveTextStyles.title,
               textAlign: TextAlign.center,
             ),
@@ -523,7 +536,9 @@ class _PermissionGate extends StatelessWidget {
             ],
             TextButton(
               onPressed: () => Navigator.of(context).maybePop(),
-              style: TextButton.styleFrom(foregroundColor: LiveColors.textMuted),
+              style: TextButton.styleFrom(
+                foregroundColor: LiveColors.textMuted,
+              ),
               child: const Text('Not now'),
             ),
           ],
@@ -545,7 +560,11 @@ class _ErrorGate extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const Icon(Icons.cloud_off_rounded, size: 52, color: LiveColors.textMuted),
+          const Icon(
+            Icons.cloud_off_rounded,
+            size: 52,
+            color: LiveColors.textMuted,
+          ),
           const SizedBox(height: 18),
           Text(
             controller.errorMessage.value ?? 'Something went wrong',
@@ -655,7 +674,10 @@ class _SummaryTile extends StatelessWidget {
   Widget build(BuildContext context) => Expanded(
     child: Column(
       children: <Widget>[
-        Text(value, style: LiveTextStyles.title.copyWith(color: tint, fontSize: 19)),
+        Text(
+          value,
+          style: LiveTextStyles.title.copyWith(color: tint, fontSize: 19),
+        ),
         const SizedBox(height: 4),
         Text(label, style: LiveTextStyles.caption.copyWith(fontSize: 11)),
       ],
@@ -690,12 +712,17 @@ class _ErrorToast extends StatelessWidget {
           ),
           child: Row(
             children: <Widget>[
-              const Icon(Icons.error_outline_rounded, size: 17, color: Colors.white),
+              const Icon(
+                Icons.error_outline_rounded,
+                size: 17,
+                color: Colors.white,
+              ),
               const SizedBox(width: 9),
               Expanded(
-                child: Text(message, style: LiveTextStyles.caption.copyWith(
-                  color: Colors.white,
-                )),
+                child: Text(
+                  message,
+                  style: LiveTextStyles.caption.copyWith(color: Colors.white),
+                ),
               ),
               if (message.contains('coins'))
                 TextButton(
@@ -708,7 +735,10 @@ class _ErrorToast extends StatelessWidget {
                   },
                   child: const Text(
                     'Top up',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
             ],

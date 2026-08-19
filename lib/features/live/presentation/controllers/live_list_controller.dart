@@ -25,7 +25,8 @@ class LiveListController extends GetxController {
   final LiveEventsClient eventsClient;
 
   final RxList<LiveStreamEntity> streams = <LiveStreamEntity>[].obs;
-  final RxList<LeaderboardEntryEntity> topHosts = <LeaderboardEntryEntity>[].obs;
+  final RxList<LeaderboardEntryEntity> topHosts =
+      <LeaderboardEntryEntity>[].obs;
   final RxBool isLoading = false.obs;
   final RxBool isLoadingMore = false.obs;
   final RxnString errorMessage = RxnString();
@@ -46,7 +47,9 @@ class LiveListController extends GetxController {
     errorMessage.value = null;
     _page = 1;
     try {
-      final PagedResult<LiveStreamEntity> result = await listLiveStreams(page: 1);
+      final PagedResult<LiveStreamEntity> result = await listLiveStreams(
+        page: 1,
+      );
       streams.assignAll(result.items);
       hasMore.value = result.hasMore;
       unawaited(_loadTopHosts());
@@ -63,11 +66,15 @@ class LiveListController extends GetxController {
     }
     isLoadingMore.value = true;
     try {
-      final PagedResult<LiveStreamEntity> result = await listLiveStreams(page: _page + 1);
+      final PagedResult<LiveStreamEntity> result = await listLiveStreams(
+        page: _page + 1,
+      );
       _page += 1;
       // A room can end between pages and reappear on the next one; de-duplicate
       // so the feed never shows the same room twice.
-      final Set<String> known = streams.map((LiveStreamEntity s) => s.id).toSet();
+      final Set<String> known = streams
+          .map((LiveStreamEntity s) => s.id)
+          .toSet();
       streams.addAll(
         result.items.where((LiveStreamEntity item) => !known.contains(item.id)),
       );
@@ -91,7 +98,9 @@ class LiveListController extends GetxController {
   void _onRealtimeEvent(LiveRealtimeEvent event) {
     switch (event.name) {
       case LiveEvents.streamStarted:
-        final Map<String, dynamic> raw = LiveModelParsers.asMap(event.payload['stream']);
+        final Map<String, dynamic> raw = LiveModelParsers.asMap(
+          event.payload['stream'],
+        );
         if (raw.isEmpty) {
           return;
         }
@@ -102,7 +111,9 @@ class LiveListController extends GetxController {
         }
 
       case LiveEvents.streamEnded:
-        final String endedId = LiveModelParsers.asString(event.payload['streamId']);
+        final String endedId = LiveModelParsers.asString(
+          event.payload['streamId'],
+        );
         streams.removeWhere((LiveStreamEntity item) => item.id == endedId);
     }
   }

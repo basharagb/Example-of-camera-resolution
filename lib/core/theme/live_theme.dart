@@ -46,7 +46,10 @@ abstract final class LiveColors {
 
   /// Readability scrim behind the top and bottom chrome. Without it, white
   /// text disappears whenever the camera points at something bright.
-  static const List<Color> topScrim = <Color>[Color(0xB3000000), Colors.transparent];
+  static const List<Color> topScrim = <Color>[
+    Color(0xB3000000),
+    Colors.transparent,
+  ];
   static const List<Color> bottomScrim = <Color>[
     Color(0xF0000000),
     Color(0x99000000),
@@ -111,7 +114,13 @@ String formatCompact(int value) {
 /// Elapsed broadcast time as mm:ss, or h:mm:ss once it passes an hour.
 String formatDuration(Duration duration) {
   final int hours = duration.inHours;
-  final String minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-  final String seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+  final String minutes = duration.inMinutes
+      .remainder(60)
+      .toString()
+      .padLeft(2, '0');
+  final String seconds = duration.inSeconds
+      .remainder(60)
+      .toString()
+      .padLeft(2, '0');
   return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
 }

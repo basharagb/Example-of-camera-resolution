@@ -101,9 +101,9 @@ class LiveEventsClient {
     }
 
     _manuallyClosed = false;
-    final Uri uri = Uri.parse('${AppConfig.apiRoot}/events').replace(
-      queryParameters: <String, String>{'streamId': ?_streamId},
-    );
+    final Uri uri = Uri.parse(
+      '${AppConfig.apiRoot}/events',
+    ).replace(queryParameters: <String, String>{'streamId': ?_streamId});
 
     try {
       // A dedicated client with no idle timeout: this response is meant to stay

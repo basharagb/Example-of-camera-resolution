@@ -111,11 +111,15 @@ class _ChatLine extends StatelessWidget {
               decoration: BoxDecoration(
                 color: LiveColors.accent.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(LiveMetrics.pillRadius),
-                border: Border.all(color: LiveColors.accent.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: LiveColors.accent.withValues(alpha: 0.4),
+                ),
               ),
               child: Text(
                 '${message.sender.displayName} joined',
-                style: LiveTextStyles.caption.copyWith(color: LiveColors.accent),
+                style: LiveTextStyles.caption.copyWith(
+                  color: LiveColors.accent,
+                ),
               ),
             ),
           ],

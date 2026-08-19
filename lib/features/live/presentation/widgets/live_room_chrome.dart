@@ -199,8 +199,7 @@ class _NetworkIndicator extends StatelessWidget {
     }
     final LiveNetworkQuality quality = controller.networkQuality.value;
     final (Color color, IconData icon, String label) = switch (quality) {
-      LiveNetworkQuality.excellent ||
-      LiveNetworkQuality.good => (
+      LiveNetworkQuality.excellent || LiveNetworkQuality.good => (
         LiveColors.accent,
         Icons.signal_cellular_alt_rounded,
         'Good',
@@ -210,8 +209,7 @@ class _NetworkIndicator extends StatelessWidget {
         Icons.signal_cellular_alt_2_bar_rounded,
         'Fair',
       ),
-      LiveNetworkQuality.bad ||
-      LiveNetworkQuality.down => (
+      LiveNetworkQuality.bad || LiveNetworkQuality.down => (
         LiveColors.live,
         Icons.signal_cellular_alt_1_bar_rounded,
         'Weak',
@@ -311,9 +309,12 @@ class TopGiftersBar extends StatelessWidget {
       height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: LiveMetrics.screenPadding),
+        padding: const EdgeInsets.symmetric(
+          horizontal: LiveMetrics.screenPadding,
+        ),
         itemCount: entries.length,
-        separatorBuilder: (BuildContext context, int index) => const SizedBox(width: 7),
+        separatorBuilder: (BuildContext context, int index) =>
+            const SizedBox(width: 7),
         itemBuilder: (BuildContext context, int index) {
           final LeaderboardEntryEntity entry = entries[index];
           // The top three get a metal; everyone else gets a neutral chip.

@@ -62,7 +62,10 @@ class SessionController extends GetxController {
       final UserProfileEntity? restored = await getCurrentUser();
       if (restored != null) {
         user.value = restored;
-        await Future.wait(<Future<void>>[refreshWallet(), eventsClient.connect()]);
+        await Future.wait(<Future<void>>[
+          refreshWallet(),
+          eventsClient.connect(),
+        ]);
       }
     } on AppFailure catch (failure) {
       debugLog('Session restore failed: ${failure.message}');
@@ -72,7 +75,9 @@ class SessionController extends GetxController {
   }
 
   Future<bool> login({required String identifier, required String password}) =>
-      _authenticate(() => loginUser(identifier: identifier, password: password));
+      _authenticate(
+        () => loginUser(identifier: identifier, password: password),
+      );
 
   Future<bool> register({
     required String username,
@@ -88,7 +93,9 @@ class SessionController extends GetxController {
     ),
   );
 
-  Future<bool> _authenticate(Future<AuthSessionEntity> Function() action) async {
+  Future<bool> _authenticate(
+    Future<AuthSessionEntity> Function() action,
+  ) async {
     isBusy.value = true;
     errorMessage.value = null;
     try {
@@ -96,7 +103,10 @@ class SessionController extends GetxController {
       user.value = session.user;
       // The stream authenticates with the access token, so it can only be
       // opened once the token has been stored.
-      await Future.wait(<Future<void>>[refreshWallet(), eventsClient.connect()]);
+      await Future.wait(<Future<void>>[
+        refreshWallet(),
+        eventsClient.connect(),
+      ]);
       return true;
     } on AppFailure catch (failure) {
       errorMessage.value = failure.message;

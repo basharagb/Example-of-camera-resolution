@@ -55,22 +55,27 @@ class ListLiveStreamsUseCase {
   const ListLiveStreamsUseCase(this._repository);
   final LiveStreamRepository _repository;
 
-  Future<PagedResult<LiveStreamEntity>> call({int page = 1, int pageSize = 20}) =>
-      _repository.listLive(page: page, pageSize: pageSize);
+  Future<PagedResult<LiveStreamEntity>> call({
+    int page = 1,
+    int pageSize = 20,
+  }) => _repository.listLive(page: page, pageSize: pageSize);
 }
 
 class StartBroadcastUseCase {
   const StartBroadcastUseCase(this._repository);
   final LiveStreamRepository _repository;
 
-  Future<LiveRoomSessionEntity> call({required String title, String? coverUrl}) =>
-      _repository.startBroadcast(title: title, coverUrl: coverUrl);
+  Future<LiveRoomSessionEntity> call({
+    required String title,
+    String? coverUrl,
+  }) => _repository.startBroadcast(title: title, coverUrl: coverUrl);
 }
 
 class JoinStreamUseCase {
   const JoinStreamUseCase(this._repository);
   final LiveStreamRepository _repository;
-  Future<LiveRoomSessionEntity> call(String streamId) => _repository.join(streamId);
+  Future<LiveRoomSessionEntity> call(String streamId) =>
+      _repository.join(streamId);
 }
 
 class EndStreamUseCase {
@@ -88,7 +93,8 @@ class HeartbeatUseCase {
 class SendReactionUseCase {
   const SendReactionUseCase(this._repository);
   final LiveStreamRepository _repository;
-  Future<int> call(String streamId, int count) => _repository.sendReaction(streamId, count);
+  Future<int> call(String streamId, int count) =>
+      _repository.sendReaction(streamId, count);
 }
 
 // ---------------------------------------------------------------------------
@@ -127,7 +133,11 @@ class SendGiftUseCase {
     required String streamId,
     required String giftCode,
     int quantity = 1,
-  }) => _repository.send(streamId: streamId, giftCode: giftCode, quantity: quantity);
+  }) => _repository.send(
+    streamId: streamId,
+    giftCode: giftCode,
+    quantity: quantity,
+  );
 }
 
 class StreamLeaderboardUseCase {
@@ -145,7 +155,8 @@ class GlobalLeaderboardUseCase {
     String board = 'hosts',
     String window = 'weekly',
     int? limit,
-  }) => _repository.globalLeaderboard(board: board, window: window, limit: limit);
+  }) =>
+      _repository.globalLeaderboard(board: board, window: window, limit: limit);
 }
 
 // ---------------------------------------------------------------------------

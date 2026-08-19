@@ -74,7 +74,8 @@ class LivePill extends StatefulWidget {
   State<LivePill> createState() => _LivePillState();
 }
 
-class _LivePillState extends State<LivePill> with SingleTickerProviderStateMixin {
+class _LivePillState extends State<LivePill>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1100),
@@ -119,7 +120,9 @@ class _LivePillState extends State<LivePill> with SingleTickerProviderStateMixin
         const SizedBox(width: 5),
         Text(
           widget.label,
-          style: LiveTextStyles.badge.copyWith(fontSize: widget.compact ? 9.5 : 11),
+          style: LiveTextStyles.badge.copyWith(
+            fontSize: widget.compact ? 9.5 : 11,
+          ),
         ),
       ],
     ),
@@ -152,7 +155,9 @@ class LiveAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: LiveColors.surfaceRaised,
-        border: ring == null ? null : Border.all(color: ring!, width: ringWidth),
+        border: ring == null
+            ? null
+            : Border.all(color: ring!, width: ringWidth),
         image: hasImage
             ? DecorationImage(
                 image: NetworkImage(profile.avatarUrl!),
