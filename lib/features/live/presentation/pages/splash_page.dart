@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/theme/live_theme.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../routes/app_routes.dart';
 import '../controllers/session_controller.dart';
 
@@ -22,6 +23,10 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
+    if (AppConfig.demoMode) {
+      _route();
+      return;
+    }
     if (!_session.isRestoring.value) {
       _route();
       return;
@@ -42,7 +47,9 @@ class _SplashPageState extends State<SplashPage> {
         return;
       }
       Get.offAllNamed<void>(
-        _session.isSignedIn ? AppRoutes.home : AppRoutes.auth,
+        AppConfig.demoMode || _session.isSignedIn
+            ? AppRoutes.home
+            : AppRoutes.auth,
       );
     });
   }

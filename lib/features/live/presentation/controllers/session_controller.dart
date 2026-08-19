@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 
 import '../../../../core/errors/failures.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../core/services/network/api_client.dart';
 import '../../../../core/services/network/live_events_client.dart';
 import '../../../../core/utils/debug_log.dart';
@@ -66,6 +67,13 @@ class SessionController extends GetxController {
           refreshWallet(),
           eventsClient.connect(),
         ]);
+      } else if (AppConfig.demoMode) {
+        // The bundled demo opens on the feed, while this seeded account is
+        // authenticated silently in the background so LIVE and gifts work on
+        // the first tap without making the reviewer fill a form.
+        await _authenticate(
+          () => loginUser(identifier: 'bashar', password: 'Live12345'),
+        );
       }
     } on AppFailure catch (failure) {
       debugLog('Session restore failed: ${failure.message}');
