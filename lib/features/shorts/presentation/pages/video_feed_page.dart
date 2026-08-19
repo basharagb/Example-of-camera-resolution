@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../../../core/theme/live_theme.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../live/presentation/controllers/session_controller.dart';
 import '../../domain/entities/short_video_entity.dart';
 import '../../domain/repositories/short_video_repository.dart';
 import '../controllers/video_feed_controller.dart';
@@ -255,26 +256,7 @@ class _TopNavigation extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Row(
         children: <Widget>[
-          GestureDetector(
-            onTap: () => Get.toNamed<void>(AppRoutes.liveList),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: LiveColors.live,
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: const Row(
-                children: <Widget>[
-                  Icon(Icons.sensors_rounded, size: 15),
-                  SizedBox(width: 4),
-                  Text(
-                    'LIVE',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          const _LiveEntryButton(),
           const Spacer(),
           const Text(
             'أتابعه',
@@ -302,6 +284,68 @@ class _TopNavigation extends StatelessWidget {
           const Spacer(),
           const Icon(Icons.search_rounded, size: 30),
         ],
+      ),
+    ),
+  );
+}
+
+class _LiveEntryButton extends StatefulWidget {
+  const _LiveEntryButton();
+
+  @override
+  State<_LiveEntryButton> createState() => _LiveEntryButtonState();
+}
+
+class _LiveEntryButtonState extends State<_LiveEntryButton> {
+  bool _opening = false;
+
+  Future<void> _open() async {
+    if (_opening) return;
+    setState(() => _opening = true);
+    final bool ready = await Get.find<SessionController>().ensureReadyForLive();
+    if (ready) {
+      await Get.toNamed<void>(AppRoutes.liveList);
+    } else {
+      await Get.toNamed<void>(AppRoutes.auth);
+    }
+    if (mounted) setState(() => _opening = false);
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: _opening ? null : _open,
+    child: Container(
+      width: 68,
+      height: 30,
+      decoration: BoxDecoration(
+        color: LiveColors.live,
+        borderRadius: BorderRadius.circular(7),
+      ),
+      alignment: Alignment.center,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 160),
+        child: _opening
+            ? const SizedBox(
+                key: ValueKey<String>('loading'),
+                width: 15,
+                height: 15,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Row(
+                key: ValueKey<String>('live'),
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(Icons.sensors_rounded, size: 15),
+                  SizedBox(width: 4),
+                  Text(
+                    'LIVE',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
       ),
     ),
   );
@@ -496,30 +540,62 @@ class _BottomNavigation extends StatelessWidget {
         children: <Widget>[
           const _NavItem(Icons.home_filled, 'الرئيسية', active: true),
           const _NavItem(Icons.people_outline_rounded, 'الأصدقاء'),
-          GestureDetector(
-            onTap: () => Get.toNamed<void>(AppRoutes.goLive),
-            child: Container(
-              width: 48,
-              height: 31,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(9),
-                boxShadow: const <BoxShadow>[
-                  BoxShadow(color: Color(0xFF22D3EE), offset: Offset(-4, 0)),
-                  BoxShadow(color: Color(0xFFFE2C55), offset: Offset(4, 0)),
-                ],
-              ),
-              child: const Icon(
-                Icons.add_rounded,
-                color: Colors.black,
-                size: 27,
-              ),
-            ),
-          ),
+          const _BroadcastEntryButton(),
           const _NavItem(Icons.inbox_outlined, 'البريد'),
           const _NavItem(Icons.person_outline_rounded, 'حسابي'),
         ],
       ),
+    ),
+  );
+}
+
+class _BroadcastEntryButton extends StatefulWidget {
+  const _BroadcastEntryButton();
+
+  @override
+  State<_BroadcastEntryButton> createState() => _BroadcastEntryButtonState();
+}
+
+class _BroadcastEntryButtonState extends State<_BroadcastEntryButton> {
+  bool _opening = false;
+
+  Future<void> _open() async {
+    if (_opening) return;
+    setState(() => _opening = true);
+    final bool ready = await Get.find<SessionController>().ensureReadyForLive();
+    if (ready) {
+      await Get.toNamed<void>(AppRoutes.goLive);
+    } else {
+      await Get.toNamed<void>(AppRoutes.auth);
+    }
+    if (mounted) setState(() => _opening = false);
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: _opening ? null : _open,
+    child: Container(
+      width: 48,
+      height: 31,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(9),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(color: Color(0xFF22D3EE), offset: Offset(-4, 0)),
+          BoxShadow(color: Color(0xFFFE2C55), offset: Offset(4, 0)),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: _opening
+          ? const SizedBox(
+              width: 17,
+              height: 17,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                color: Colors.black,
+              ),
+            )
+          : const Icon(Icons.add_rounded, color: Colors.black, size: 27),
     ),
   );
 }

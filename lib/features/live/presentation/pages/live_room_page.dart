@@ -271,7 +271,7 @@ class _ViewerToolbarState extends State<_ViewerToolbar> {
             ),
             const SizedBox(width: 8),
             _RoundAction(
-              emoji: '🎁',
+              icon: Icons.card_giftcard_rounded,
               tint: LiveColors.coin,
               onTap: () => GiftSheet.show(
                 context: context,

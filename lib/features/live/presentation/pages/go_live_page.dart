@@ -21,6 +21,7 @@ class GoLivePage extends StatefulWidget {
 class _GoLivePageState extends State<GoLivePage> {
   final TextEditingController _title = TextEditingController();
   final SessionController _session = Get.find<SessionController>();
+  bool _starting = false;
 
   @override
   void initState() {
@@ -35,9 +36,17 @@ class _GoLivePageState extends State<GoLivePage> {
     super.dispose();
   }
 
-  void _start() {
+  Future<void> _start() async {
+    if (_starting) return;
     final String title = _title.text.trim();
     if (title.isEmpty) {
+      return;
+    }
+    setState(() => _starting = true);
+    final bool ready = await _session.ensureReadyForLive();
+    if (!ready) {
+      if (mounted) setState(() => _starting = false);
+      await Get.toNamed<void>(AppRoutes.auth);
       return;
     }
     HapticFeedback.mediumImpact();
@@ -118,11 +127,23 @@ class _GoLivePageState extends State<GoLivePage> {
                       ),
                     ),
                   ),
-                  onPressed: _start,
-                  icon: const Icon(Icons.videocam_rounded),
-                  label: const Text(
-                    'Start broadcasting',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                  onPressed: _starting ? null : _start,
+                  icon: _starting
+                      ? const SizedBox(
+                          width: 19,
+                          height: 19,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.videocam_rounded),
+                  label: Text(
+                    _starting ? 'Opening camera…' : 'Start broadcasting',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ),

@@ -95,6 +95,8 @@ extension LiveStreamModel on LiveStreamEntity {
         endedAt: json['endedAt'] == null
             ? null
             : LiveModelParsers.asDate(json['endedAt']),
+        isDemo: json['isDemo'] == true,
+        demoVideoAsset: json['demoVideoAsset'] as String?,
       );
 }
 

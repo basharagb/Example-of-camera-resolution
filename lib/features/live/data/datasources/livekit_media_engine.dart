@@ -60,18 +60,55 @@ class LiveKitMediaEngine implements LiveMediaEngine {
       return;
     }
     try {
-      _previewTrack = await LocalVideoTrack.createCameraTrack(
-        const CameraCaptureOptions(
-          cameraPosition: CameraPosition.front,
-          maxFrameRate: 30,
-          params: VideoParametersPresets.h720_169,
-        ),
-      );
-      _cameraPosition = CameraPosition.front;
+      _previewTrack = await _createCompatibleCameraTrack();
     } catch (error, stackTrace) {
       debugLog('Local LiveKit preview failed', error, stackTrace);
       throw BroadcastFailure('Could not start the camera preview', error);
     }
+  }
+
+  /// Android vendors expose very different camera profiles. A few older
+  /// devices reject a 720p front-camera constraint outright instead of
+  /// choosing a smaller mode, so progressively relax the request and finally
+  /// try the rear camera. This keeps the LIVE button useful across both modern
+  /// phones and lower-end demo hardware.
+  Future<LocalVideoTrack> _createCompatibleCameraTrack() async {
+    Object? lastError;
+    const List<CameraCaptureOptions> attempts = <CameraCaptureOptions>[
+      CameraCaptureOptions(
+        cameraPosition: CameraPosition.front,
+        maxFrameRate: 30,
+        params: VideoParametersPresets.h720_169,
+      ),
+      CameraCaptureOptions(
+        cameraPosition: CameraPosition.front,
+        maxFrameRate: 24,
+        params: VideoParametersPresets.h360_169,
+      ),
+      CameraCaptureOptions(
+        cameraPosition: CameraPosition.back,
+        maxFrameRate: 24,
+        params: VideoParametersPresets.h360_169,
+      ),
+    ];
+
+    for (final CameraCaptureOptions options in attempts) {
+      try {
+        final LocalVideoTrack track = await LocalVideoTrack.createCameraTrack(
+          options,
+        );
+        _cameraPosition = options.cameraPosition;
+        return track;
+      } catch (error) {
+        lastError = error;
+        debugLog(
+          'Camera profile failed: ${options.cameraPosition.name} '
+          '${options.params.dimensions.width}x${options.params.dimensions.height}',
+          error,
+        );
+      }
+    }
+    throw lastError ?? StateError('No camera profile is available');
   }
 
   @override
@@ -92,17 +129,10 @@ class LiveKitMediaEngine implements LiveMediaEngine {
         // leave() dispose the same track twice.
         _previewTrack = null;
       } else {
-        await participant.setCameraEnabled(
-          true,
-          cameraCaptureOptions: const CameraCaptureOptions(
-            cameraPosition: CameraPosition.front,
-            maxFrameRate: 30,
-            params: VideoParametersPresets.h720_169,
-          ),
-        );
+        final LocalVideoTrack track = await _createCompatibleCameraTrack();
+        await participant.publishVideoTrack(track);
       }
       await participant.setMicrophoneEnabled(true);
-      _cameraPosition = CameraPosition.front;
     } catch (error, stackTrace) {
       debugLog('LiveKit publish failed', error, stackTrace);
       await leave();

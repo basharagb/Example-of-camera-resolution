@@ -69,6 +69,8 @@ class LiveStreamEntity {
     this.totalGifts = 0,
     this.durationSeconds = 0,
     this.endedAt,
+    this.isDemo = false,
+    this.demoVideoAsset,
   });
 
   final String id;
@@ -85,6 +87,8 @@ class LiveStreamEntity {
   final int totalGifts;
   final int durationSeconds;
   final DateTime? endedAt;
+  final bool isDemo;
+  final String? demoVideoAsset;
 
   bool get isLive => status == LiveStreamStatus.live;
 
@@ -113,6 +117,8 @@ class LiveStreamEntity {
     totalGifts: totalGifts ?? this.totalGifts,
     durationSeconds: durationSeconds,
     endedAt: endedAt,
+    isDemo: isDemo,
+    demoVideoAsset: demoVideoAsset,
   );
 }
 

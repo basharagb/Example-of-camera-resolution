@@ -26,6 +26,15 @@ class LiveCover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (stream.coverUrl != null && stream.coverUrl!.startsWith('asset://')) {
+      return Image.asset(
+        stream.coverUrl!.replaceFirst('asset://', ''),
+        fit: BoxFit.cover,
+        errorBuilder:
+            (BuildContext context, Object error, StackTrace? stackTrace) =>
+                _fallback(),
+      );
+    }
     if (stream.coverUrl != null && stream.coverUrl!.startsWith('http')) {
       return Image.network(
         stream.coverUrl!,

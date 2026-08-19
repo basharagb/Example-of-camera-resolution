@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../../core/theme/live_theme.dart';
 import '../../data/datasources/livekit_media_engine.dart';
@@ -24,6 +27,12 @@ class LiveVideoSurface extends StatelessWidget {
 
       if (credentials == null) {
         return const ColoredBox(color: LiveColors.background);
+      }
+      final LiveStreamEntity? stream = controller.stream.value;
+      if (!controller.isHost && (stream?.isDemo ?? false)) {
+        return _DemoLiveSurface(
+          asset: stream?.demoVideoAsset ?? 'assets/demo/feed/coffee.mp4',
+        );
       }
       if (credentials.isMock) {
         if (controller.isHost) {
@@ -74,6 +83,76 @@ class LiveVideoSurface extends StatelessWidget {
           ? const _LoadingSurface(label: 'Connecting to the host')
           : VideoTrackRenderer(track, fit: VideoViewFit.cover);
     });
+  }
+}
+
+class _DemoLiveSurface extends StatefulWidget {
+  const _DemoLiveSurface({required this.asset});
+  final String asset;
+
+  @override
+  State<_DemoLiveSurface> createState() => _DemoLiveSurfaceState();
+}
+
+class _DemoLiveSurfaceState extends State<_DemoLiveSurface> {
+  late final VideoPlayerController _player = VideoPlayerController.asset(
+    widget.asset.replaceFirst('asset://', ''),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_prepare());
+  }
+
+  Future<void> _prepare() async {
+    await _player.initialize();
+    await _player.setLooping(true);
+    await _player.setVolume(1);
+    await _player.play();
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    unawaited(_player.dispose());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_player.value.isInitialized) {
+      return const _LoadingSurface(label: 'Opening demo live');
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        FittedBox(
+          fit: BoxFit.cover,
+          clipBehavior: Clip.hardEdge,
+          child: SizedBox(
+            width: _player.value.size.width,
+            height: _player.value.size.height,
+            child: VideoPlayer(_player),
+          ),
+        ),
+        Positioned(
+          top: 112,
+          right: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'DEMO LIVE',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 

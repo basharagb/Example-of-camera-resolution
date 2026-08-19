@@ -41,6 +41,7 @@ class SessionController extends GetxController {
   final RxBool isRestoring = true.obs;
   final RxnString errorMessage = RxnString();
   final RxList<CoinPackageEntity> coinPackages = <CoinPackageEntity>[].obs;
+  Future<bool>? _demoAuthentication;
 
   bool get isSignedIn => user.value != null;
 
@@ -71,9 +72,7 @@ class SessionController extends GetxController {
         // The bundled demo opens on the feed, while this seeded account is
         // authenticated silently in the background so LIVE and gifts work on
         // the first tap without making the reviewer fill a form.
-        await _authenticate(
-          () => loginUser(identifier: 'bashar', password: 'Live12345'),
-        );
+        await ensureReadyForLive();
       }
     } on AppFailure catch (failure) {
       debugLog('Session restore failed: ${failure.message}');
@@ -86,6 +85,17 @@ class SessionController extends GetxController {
       _authenticate(
         () => loginUser(identifier: identifier, password: password),
       );
+
+  /// Guarantees that a LIVE button never navigates with an anonymous session.
+  /// The startup login and a very fast user tap share the same Future, avoiding
+  /// duplicate login requests and the silent 401 that used to follow.
+  Future<bool> ensureReadyForLive() {
+    if (isSignedIn) return Future<bool>.value(true);
+    if (!AppConfig.demoMode) return Future<bool>.value(false);
+    return _demoAuthentication ??= _authenticate(
+      () => loginUser(identifier: 'bashar', password: 'Live12345'),
+    ).whenComplete(() => _demoAuthentication = null);
+  }
 
   Future<bool> register({
     required String username,

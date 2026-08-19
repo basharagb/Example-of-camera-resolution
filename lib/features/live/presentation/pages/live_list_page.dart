@@ -481,7 +481,9 @@ class _GoLiveButtonState extends State<_GoLiveButton> {
     setState(() => _opening = true);
     HapticFeedback.mediumImpact();
     try {
-      await Get.toNamed<void>(AppRoutes.goLive);
+      final bool ready = await Get.find<SessionController>()
+          .ensureReadyForLive();
+      await Get.toNamed<void>(ready ? AppRoutes.goLive : AppRoutes.auth);
     } finally {
       if (mounted) setState(() => _opening = false);
     }

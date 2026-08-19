@@ -246,6 +246,13 @@ class LiveRoomController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> _connectMedia(RtcCredentialsEntity credentials) async {
+    if (!isHost && (stream.value?.isDemo ?? false)) {
+      // A persistent demo host has backend chat/gifts/realtime state, while its
+      // media is a bundled loop so reviewers can test the whole viewer flow
+      // without requiring a second broadcasting phone.
+      isVideoReady.value = true;
+      return;
+    }
     if (credentials.isMock) {
       // A mock backend cannot deliver video to viewers, but the host can still
       // frame the shot and exercise camera controls with an on-device preview.
