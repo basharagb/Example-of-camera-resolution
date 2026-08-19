@@ -40,10 +40,14 @@ class ShortVideoRepositoryImpl implements ShortVideoRepository {
   }
 
   @override
-  Future<void> recordView(String id) => _client.post('/videos/$id/view');
+  Future<void> recordView(String id) async {
+    await _client.post('/videos/$id/view');
+  }
 
   @override
-  Future<void> recordShare(String id) => _client.post('/videos/$id/share');
+  Future<void> recordShare(String id) async {
+    await _client.post('/videos/$id/share');
+  }
 
   @override
   Future<List<VideoCommentEntity>> comments(String id) async {

@@ -42,7 +42,7 @@ class _SplashPageState extends State<SplashPage> {
         return;
       }
       Get.offAllNamed<void>(
-        _session.isSignedIn ? AppRoutes.liveList : AppRoutes.auth,
+        _session.isSignedIn ? AppRoutes.home : AppRoutes.auth,
       );
     });
   }

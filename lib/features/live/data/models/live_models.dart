@@ -135,6 +135,7 @@ extension GiftModel on GiftEntity {
         json['animationDurationMs'],
         2000,
       ),
+      animationType: LiveModelParsers.asString(json['animationType'], 'float'),
       iconUrl: json['iconUrl'] as String?,
       animationAsset: json['animationAsset'] as String?,
     );

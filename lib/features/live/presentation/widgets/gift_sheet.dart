@@ -7,6 +7,7 @@ import '../../domain/entities/live_entities.dart';
 import '../controllers/live_room_controller.dart';
 import '../controllers/session_controller.dart';
 import 'coin_top_up_sheet.dart';
+import 'gift_artwork.dart';
 
 /// The gift catalogue, opened from the room's toolbar.
 ///
@@ -120,6 +121,7 @@ class _GiftSheetState extends State<GiftSheet> with SingleTickerProviderStateMix
                       _GiftGrid(
                         gifts: all.where((GiftEntity g) => g.tier == tier).toList(),
                         selected: _selected,
+                        walletBalance: widget.session.wallet.value.coinBalance,
                         onSelect: (GiftEntity gift) => setState(() {
                           _selected = gift;
                           _comboCount = 1;
@@ -196,11 +198,13 @@ class _GiftGrid extends StatelessWidget {
     required this.gifts,
     required this.selected,
     required this.onSelect,
+    required this.walletBalance,
   });
 
   final List<GiftEntity> gifts;
   final GiftEntity? selected;
   final ValueChanged<GiftEntity> onSelect;
+  final int walletBalance;
 
   @override
   Widget build(BuildContext context) {
@@ -221,11 +225,14 @@ class _GiftGrid extends StatelessWidget {
       itemBuilder: (BuildContext context, int index) {
         final GiftEntity gift = gifts[index];
         final bool isSelected = selected?.id == gift.id;
+        final bool affordable = walletBalance >= gift.coinCost;
         final Color tint = LiveColors.forTier(gift.tier);
 
-        return GestureDetector(
-          onTap: () => onSelect(gift),
-          child: AnimatedContainer(
+        return Opacity(
+          opacity: affordable ? 1 : 0.48,
+          child: GestureDetector(
+            onTap: affordable ? () => onSelect(gift) : null,
+            child: AnimatedContainer(
             duration: LiveMetrics.fast,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(LiveMetrics.cardRadius),
@@ -240,7 +247,7 @@ class _GiftGrid extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Text(gift.emoji, style: const TextStyle(fontSize: 32)),
+                GiftArtwork(gift: gift, size: 42),
                 const SizedBox(height: 6),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -269,6 +276,7 @@ class _GiftGrid extends StatelessWidget {
                   ],
                 ),
               ],
+            ),
             ),
           ),
         );

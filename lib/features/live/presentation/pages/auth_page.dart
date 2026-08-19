@@ -70,7 +70,7 @@ class _AuthFormState extends State<_AuthForm> {
           );
 
     if (ok) {
-      Get.offAllNamed<void>(AppRoutes.liveList);
+      Get.offAllNamed<void>(AppRoutes.home);
     }
   }
 

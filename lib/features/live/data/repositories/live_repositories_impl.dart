@@ -173,6 +173,7 @@ class GiftRepositoryImpl implements GiftRepository {
       streamId,
       giftCode,
       quantity,
+      'gift-${DateTime.now().microsecondsSinceEpoch}-$giftCode-$quantity',
     );
     return (
       event: GiftEventModel.fromJson(LiveModelParsers.asMap(data['giftEvent'])),

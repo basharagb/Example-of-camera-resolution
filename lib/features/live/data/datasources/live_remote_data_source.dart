@@ -71,9 +71,14 @@ class LiveRemoteDataSource {
     String streamId,
     String giftCode,
     int quantity,
+    String idempotencyKey,
   ) => _client.post(
     '/streams/$streamId/gifts',
-    body: <String, dynamic>{'giftCode': giftCode, 'quantity': quantity},
+    body: <String, dynamic>{
+      'giftCode': giftCode,
+      'quantity': quantity,
+      'idempotencyKey': idempotencyKey,
+    },
   );
 
   Future<Map<String, dynamic>> streamLeaderboard(String streamId, {int? limit}) =>

@@ -3,6 +3,7 @@ abstract final class AppRoutes {
   /// been checked.
   static const String splash = '/';
   static const String auth = '/auth';
+  static const String home = '/home';
   static const String liveList = '/live';
   static const String goLive = '/live/new';
   static const String liveRoom = '/live/room';

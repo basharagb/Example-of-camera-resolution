@@ -159,6 +159,7 @@ class GiftEntity {
     required this.coinCost,
     required this.tier,
     required this.animationDurationMs,
+    this.animationType = 'float',
     this.iconUrl,
     this.animationAsset,
   });
@@ -170,14 +171,11 @@ class GiftEntity {
   final int coinCost;
   final GiftTier tier;
   final int animationDurationMs;
+  final String animationType;
   final String? iconUrl;
   final String? animationAsset;
 
-  /// The catalogue stores an emoji in `iconUrl` until real artwork is uploaded,
-  /// so anything that is not a URL is rendered as text.
-  bool get iconIsEmoji => iconUrl != null && !iconUrl!.startsWith('http');
-
-  String get emoji => iconIsEmoji ? iconUrl! : '🎁';
+  String? get artwork => animationAsset ?? iconUrl;
 }
 
 @immutable

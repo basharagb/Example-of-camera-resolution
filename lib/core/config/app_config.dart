@@ -11,6 +11,10 @@ import 'dart:io';
 /// flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
 /// ```
 abstract final class AppConfig {
+  static const bool demoMode = bool.fromEnvironment(
+    'DEMO_MODE',
+    defaultValue: true,
+  );
   static const String _overrideApiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: '',
