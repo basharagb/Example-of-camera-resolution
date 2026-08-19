@@ -38,11 +38,15 @@ class AuthRepositoryImpl implements AuthRepository {
 
   /// Tokens are written before the session is handed back, so the caller can
   /// immediately make an authenticated request or open the socket.
-  Future<AuthSessionEntity> _persist(Future<Map<String, dynamic>> request) async {
+  Future<AuthSessionEntity> _persist(
+    Future<Map<String, dynamic>> request,
+  ) async {
     final Map<String, dynamic> data = await request;
     final Map<String, dynamic> tokens = LiveModelParsers.asMap(data['tokens']);
     final String accessToken = LiveModelParsers.asString(tokens['accessToken']);
-    final String refreshToken = LiveModelParsers.asString(tokens['refreshToken']);
+    final String refreshToken = LiveModelParsers.asString(
+      tokens['refreshToken'],
+    );
 
     await _tokenStorage.saveTokens(
       accessToken: accessToken,
@@ -84,9 +88,9 @@ class LiveStreamRepositoryImpl implements LiveStreamRepository {
       pageSize: pageSize,
     );
     return PagedResult<LiveStreamEntity>(
-      items: LiveModelParsers.asMapList(data['items'])
-          .map(LiveStreamModel.fromJson)
-          .toList(growable: false),
+      items: LiveModelParsers.asMapList(
+        data['items'],
+      ).map(LiveStreamModel.fromJson).toList(growable: false),
       page: LiveModelParsers.asInt(data['page'], 1),
       total: LiveModelParsers.asInt(data['total']),
       hasMore: data['hasMore'] == true,
@@ -104,10 +108,9 @@ class LiveStreamRepositoryImpl implements LiveStreamRepository {
     required String title,
     String? coverUrl,
   }) async {
-    final Map<String, dynamic> data = await _remote.startStream(<String, dynamic>{
-      'title': title,
-      'coverUrl': ?coverUrl,
-    });
+    final Map<String, dynamic> data = await _remote.startStream(
+      <String, dynamic>{'title': title, 'coverUrl': ?coverUrl},
+    );
     return LiveRoomSessionModel.fromJson(data);
   }
 
@@ -125,7 +128,10 @@ class LiveStreamRepositoryImpl implements LiveStreamRepository {
 
   @override
   Future<int> sendReaction(String streamId, int count) async {
-    final Map<String, dynamic> data = await _remote.sendReaction(streamId, count);
+    final Map<String, dynamic> data = await _remote.sendReaction(
+      streamId,
+      count,
+    );
     return LiveModelParsers.asInt(data['totalLikes']);
   }
 }
@@ -137,10 +143,13 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Future<List<ChatMessageEntity>> history(String streamId, {int? limit}) async {
-    final Map<String, dynamic> data = await _remote.chatHistory(streamId, limit: limit);
-    return LiveModelParsers.asMapList(data['items'])
-        .map(ChatMessageModel.fromJson)
-        .toList(growable: false);
+    final Map<String, dynamic> data = await _remote.chatHistory(
+      streamId,
+      limit: limit,
+    );
+    return LiveModelParsers.asMapList(
+      data['items'],
+    ).map(ChatMessageModel.fromJson).toList(growable: false);
   }
 
   @override
@@ -158,9 +167,9 @@ class GiftRepositoryImpl implements GiftRepository {
   @override
   Future<List<GiftEntity>> catalogue() async {
     final Map<String, dynamic> data = await _remote.gifts();
-    return LiveModelParsers.asMapList(data['items'])
-        .map(GiftModel.fromJson)
-        .toList(growable: false);
+    return LiveModelParsers.asMapList(
+      data['items'],
+    ).map(GiftModel.fromJson).toList(growable: false);
   }
 
   @override
@@ -222,9 +231,9 @@ class WalletRepositoryImpl implements WalletRepository {
   @override
   Future<List<CoinPackageEntity>> packages() async {
     final Map<String, dynamic> data = await _remote.coinPackages();
-    return LiveModelParsers.asMapList(data['items'])
-        .map(CoinPackageModel.fromJson)
-        .toList(growable: false);
+    return LiveModelParsers.asMapList(
+      data['items'],
+    ).map(CoinPackageModel.fromJson).toList(growable: false);
   }
 
   @override

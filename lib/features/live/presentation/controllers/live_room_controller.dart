@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -232,7 +231,8 @@ class LiveRoomController extends GetxController with WidgetsBindingObserver {
       return false;
     }
 
-    final PermissionStatusEntity microphone = await requestMicrophonePermission();
+    final PermissionStatusEntity microphone =
+        await requestMicrophonePermission();
     if (!microphone.isUsable) {
       permissionNeedsSettings.value = microphone.shouldOpenSettings;
       permissionMessage.value = microphone.shouldOpenSettings
@@ -600,7 +600,8 @@ class LiveRoomController extends GetxController with WidgetsBindingObserver {
       }
       return;
     }
-    if ((state == AppLifecycleState.inactive || state == AppLifecycleState.paused) &&
+    if ((state == AppLifecycleState.inactive ||
+            state == AppLifecycleState.paused) &&
         isLive.value) {
       unawaited(mediaEngine.setCameraEnabled(false));
     }

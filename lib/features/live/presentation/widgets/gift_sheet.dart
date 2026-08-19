@@ -35,7 +35,8 @@ class GiftSheet extends StatefulWidget {
   State<GiftSheet> createState() => _GiftSheetState();
 }
 
-class _GiftSheetState extends State<GiftSheet> with SingleTickerProviderStateMixin {
+class _GiftSheetState extends State<GiftSheet>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController = TabController(
     length: GiftTier.values.length,
     vsync: this,
@@ -57,7 +58,10 @@ class _GiftSheetState extends State<GiftSheet> with SingleTickerProviderStateMix
       return;
     }
     setState(() => _sending = true);
-    final bool sent = await widget.controller.sendGift(gift, quantity: _comboCount);
+    final bool sent = await widget.controller.sendGift(
+      gift,
+      quantity: _comboCount,
+    );
     if (!mounted) {
       return;
     }
@@ -85,65 +89,73 @@ class _GiftSheetState extends State<GiftSheet> with SingleTickerProviderStateMix
       minChildSize: 0.4,
       maxChildSize: 0.9,
       expand: false,
-      builder: (BuildContext context, ScrollController scrollController) => Container(
-        decoration: const BoxDecoration(
-          color: LiveColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-        ),
-        child: Column(
-          children: <Widget>[
-            const _SheetGrip(),
-            _WalletHeader(session: widget.session),
-            TabBar(
-              controller: _tabController,
-              indicatorColor: LiveColors.accent,
-              indicatorSize: TabBarIndicatorSize.label,
-              labelColor: LiveColors.accent,
-              unselectedLabelColor: LiveColors.textMuted,
-              labelStyle: LiveTextStyles.caption.copyWith(fontWeight: FontWeight.w800),
-              tabs: <Widget>[
-                for (final GiftTier tier in GiftTier.values)
-                  Tab(text: tier.name.toUpperCase()),
+      builder: (BuildContext context, ScrollController scrollController) =>
+          Container(
+            decoration: const BoxDecoration(
+              color: LiveColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+            ),
+            child: Column(
+              children: <Widget>[
+                const _SheetGrip(),
+                _WalletHeader(session: widget.session),
+                TabBar(
+                  controller: _tabController,
+                  indicatorColor: LiveColors.accent,
+                  indicatorSize: TabBarIndicatorSize.label,
+                  labelColor: LiveColors.accent,
+                  unselectedLabelColor: LiveColors.textMuted,
+                  labelStyle: LiveTextStyles.caption.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                  tabs: <Widget>[
+                    for (final GiftTier tier in GiftTier.values)
+                      Tab(text: tier.name.toUpperCase()),
+                  ],
+                ),
+                Expanded(
+                  child: Obx(() {
+                    final List<GiftEntity> all = widget.controller.gifts;
+                    if (all.isEmpty) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: LiveColors.accent,
+                        ),
+                      );
+                    }
+                    return TabBarView(
+                      controller: _tabController,
+                      children: <Widget>[
+                        for (final GiftTier tier in GiftTier.values)
+                          _GiftGrid(
+                            gifts: all
+                                .where((GiftEntity g) => g.tier == tier)
+                                .toList(),
+                            selected: _selected,
+                            walletBalance:
+                                widget.session.wallet.value.coinBalance,
+                            onSelect: (GiftEntity gift) => setState(() {
+                              _selected = gift;
+                              _comboCount = 1;
+                            }),
+                          ),
+                      ],
+                    );
+                  }),
+                ),
+                _SendBar(
+                  selected: _selected,
+                  comboCount: _comboCount,
+                  sending: _sending,
+                  onCombo: () => setState(() {
+                    // The server caps a combo at 99.
+                    _comboCount = _comboCount >= 99 ? 1 : _comboCount + 1;
+                  }),
+                  onSend: _send,
+                ),
               ],
             ),
-            Expanded(
-              child: Obx(() {
-                final List<GiftEntity> all = widget.controller.gifts;
-                if (all.isEmpty) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: LiveColors.accent),
-                  );
-                }
-                return TabBarView(
-                  controller: _tabController,
-                  children: <Widget>[
-                    for (final GiftTier tier in GiftTier.values)
-                      _GiftGrid(
-                        gifts: all.where((GiftEntity g) => g.tier == tier).toList(),
-                        selected: _selected,
-                        walletBalance: widget.session.wallet.value.coinBalance,
-                        onSelect: (GiftEntity gift) => setState(() {
-                          _selected = gift;
-                          _comboCount = 1;
-                        }),
-                      ),
-                  ],
-                );
-              }),
-            ),
-            _SendBar(
-              selected: _selected,
-              comboCount: _comboCount,
-              sending: _sending,
-              onCombo: () => setState(() {
-                // The server caps a combo at 99.
-                _comboCount = _comboCount >= 99 ? 1 : _comboCount + 1;
-              }),
-              onSend: _send,
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }
@@ -183,7 +195,8 @@ class _WalletHeader extends StatelessWidget {
         ),
         const Spacer(),
         TextButton.icon(
-          onPressed: () => CoinTopUpSheet.show(context: context, session: session),
+          onPressed: () =>
+              CoinTopUpSheet.show(context: context, session: session),
           icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
           label: const Text('Top up'),
           style: TextButton.styleFrom(foregroundColor: LiveColors.accent),
@@ -233,50 +246,50 @@ class _GiftGrid extends StatelessWidget {
           child: GestureDetector(
             onTap: affordable ? () => onSelect(gift) : null,
             child: AnimatedContainer(
-            duration: LiveMetrics.fast,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(LiveMetrics.cardRadius),
-              color: isSelected
-                  ? tint.withValues(alpha: 0.16)
-                  : LiveColors.surfaceRaised,
-              border: Border.all(
-                color: isSelected ? tint : Colors.transparent,
-                width: 1.6,
+              duration: LiveMetrics.fast,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(LiveMetrics.cardRadius),
+                color: isSelected
+                    ? tint.withValues(alpha: 0.16)
+                    : LiveColors.surfaceRaised,
+                border: Border.all(
+                  color: isSelected ? tint : Colors.transparent,
+                  width: 1.6,
+                ),
               ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                GiftArtwork(gift: gift, size: 42),
-                const SizedBox(height: 6),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Text(
-                    gift.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: LiveTextStyles.caption.copyWith(fontSize: 11),
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    const Text('🪙', style: TextStyle(fontSize: 10)),
-                    const SizedBox(width: 3),
-                    Text(
-                      formatCompact(gift.coinCost),
-                      style: LiveTextStyles.caption.copyWith(
-                        color: LiveColors.coin,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                      ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  GiftArtwork(gift: gift, size: 42),
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      gift.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: LiveTextStyles.caption.copyWith(fontSize: 11),
                     ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      const Text('🪙', style: TextStyle(fontSize: 10)),
+                      const SizedBox(width: 3),
+                      Text(
+                        formatCompact(gift.coinCost),
+                        style: LiveTextStyles.caption.copyWith(
+                          color: LiveColors.coin,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -327,7 +340,9 @@ class _SendBar extends StatelessWidget {
                 child: Text(
                   'x$comboCount',
                   style: LiveTextStyles.title.copyWith(
-                    color: gift == null ? LiveColors.textMuted : LiveColors.accent,
+                    color: gift == null
+                        ? LiveColors.textMuted
+                        : LiveColors.accent,
                   ),
                 ),
               ),
@@ -343,7 +358,9 @@ class _SendBar extends StatelessWidget {
                     foregroundColor: LiveColors.accentInk,
                     disabledBackgroundColor: LiveColors.surfaceRaised,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(LiveMetrics.pillRadius),
+                      borderRadius: BorderRadius.circular(
+                        LiveMetrics.pillRadius,
+                      ),
                     ),
                   ),
                   child: sending
@@ -356,7 +373,9 @@ class _SendBar extends StatelessWidget {
                           ),
                         )
                       : Text(
-                          gift == null ? 'Pick a gift' : 'Send  ·  🪙 ${formatCompact(total)}',
+                          gift == null
+                              ? 'Pick a gift'
+                              : 'Send  ·  🪙 ${formatCompact(total)}',
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                 ),

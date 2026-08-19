@@ -65,7 +65,8 @@ class LiveRemoteDataSource {
 
   // ---- gifts ----
 
-  Future<Map<String, dynamic>> gifts() => _client.get('/gifts', authenticated: false);
+  Future<Map<String, dynamic>> gifts() =>
+      _client.get('/gifts', authenticated: false);
 
   Future<Map<String, dynamic>> sendGift(
     String streamId,
@@ -81,12 +82,14 @@ class LiveRemoteDataSource {
     },
   );
 
-  Future<Map<String, dynamic>> streamLeaderboard(String streamId, {int? limit}) =>
-      _client.get(
-        '/streams/$streamId/leaderboard',
-        query: <String, dynamic>{'limit': ?limit},
-        authenticated: false,
-      );
+  Future<Map<String, dynamic>> streamLeaderboard(
+    String streamId, {
+    int? limit,
+  }) => _client.get(
+    '/streams/$streamId/leaderboard',
+    query: <String, dynamic>{'limit': ?limit},
+    authenticated: false,
+  );
 
   Future<Map<String, dynamic>> globalLeaderboard({
     String board = 'hosts',
@@ -94,11 +97,7 @@ class LiveRemoteDataSource {
     int? limit,
   }) => _client.get(
     '/leaderboard',
-    query: <String, dynamic>{
-      'board': board,
-      'window': window,
-      'limit': ?limit,
-    },
+    query: <String, dynamic>{'board': board, 'window': window, 'limit': ?limit},
     authenticated: false,
   );
 
@@ -106,7 +105,8 @@ class LiveRemoteDataSource {
 
   Future<Map<String, dynamic>> wallet() => _client.get('/wallet');
 
-  Future<Map<String, dynamic>> coinPackages() => _client.get('/wallet/packages');
+  Future<Map<String, dynamic>> coinPackages() =>
+      _client.get('/wallet/packages');
 
   Future<Map<String, dynamic>> topUp(String packageId) => _client.post(
     '/wallet/topup',

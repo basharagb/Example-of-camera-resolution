@@ -48,14 +48,18 @@ class VideoFeedController extends GetxController {
   void pageChanged(int index) {
     currentIndex.value = index;
     if (index >= 0 && index < videos.length) {
-      unawaited(repository.recordView(videos[index].id).catchError((Object error) {
-        debugLog('View tracking failed', error);
-      }));
+      unawaited(
+        repository.recordView(videos[index].id).catchError((Object error) {
+          debugLog('View tracking failed', error);
+        }),
+      );
     }
   }
 
   Future<void> toggleLike(ShortVideoEntity video) async {
-    final int index = videos.indexWhere((ShortVideoEntity item) => item.id == video.id);
+    final int index = videos.indexWhere(
+      (ShortVideoEntity item) => item.id == video.id,
+    );
     if (index < 0) return;
     final bool next = !videos[index].isLiked;
     videos[index] = videos[index].copyWith(
@@ -70,7 +74,9 @@ class VideoFeedController extends GetxController {
   }
 
   Future<void> toggleBookmark(ShortVideoEntity video) async {
-    final int index = videos.indexWhere((ShortVideoEntity item) => item.id == video.id);
+    final int index = videos.indexWhere(
+      (ShortVideoEntity item) => item.id == video.id,
+    );
     if (index < 0) return;
     final bool next = !videos[index].isBookmarked;
     videos[index] = videos[index].copyWith(
@@ -85,9 +91,13 @@ class VideoFeedController extends GetxController {
   }
 
   Future<void> share(ShortVideoEntity video) async {
-    final int index = videos.indexWhere((ShortVideoEntity item) => item.id == video.id);
+    final int index = videos.indexWhere(
+      (ShortVideoEntity item) => item.id == video.id,
+    );
     if (index >= 0) {
-      videos[index] = videos[index].copyWith(sharesCount: videos[index].sharesCount + 1);
+      videos[index] = videos[index].copyWith(
+        sharesCount: videos[index].sharesCount + 1,
+      );
     }
     try {
       await repository.recordShare(video.id);

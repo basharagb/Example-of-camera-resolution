@@ -176,7 +176,9 @@ class _AuthFormState extends State<_AuthForm> {
                     Expanded(
                       child: Text(
                         error,
-                        style: LiveTextStyles.caption.copyWith(color: LiveColors.live),
+                        style: LiveTextStyles.caption.copyWith(
+                          color: LiveColors.live,
+                        ),
                       ),
                     ),
                   ],
@@ -193,7 +195,9 @@ class _AuthFormState extends State<_AuthForm> {
                     backgroundColor: LiveColors.accent,
                     foregroundColor: LiveColors.accentInk,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(LiveMetrics.pillRadius),
+                      borderRadius: BorderRadius.circular(
+                        LiveMetrics.pillRadius,
+                      ),
                     ),
                   ),
                   onPressed: _session.isBusy.value ? null : _submit,
@@ -224,7 +228,9 @@ class _AuthFormState extends State<_AuthForm> {
                 _session.errorMessage.value = null;
                 _formKey.currentState?.reset();
               }),
-              style: TextButton.styleFrom(foregroundColor: LiveColors.textSecondary),
+              style: TextButton.styleFrom(
+                foregroundColor: LiveColors.textSecondary,
+              ),
               child: Text(
                 _isRegistering
                     ? 'Already have an account? Sign in'
@@ -260,7 +266,11 @@ class _Brand extends StatelessWidget {
             ),
           ],
         ),
-        child: const Icon(Icons.videocam_rounded, size: 36, color: Colors.white),
+        child: const Icon(
+          Icons.videocam_rounded,
+          size: 36,
+          color: Colors.white,
+        ),
       ),
       const SizedBox(height: 18),
       Text('Elite Live', style: LiveTextStyles.displayLarge),

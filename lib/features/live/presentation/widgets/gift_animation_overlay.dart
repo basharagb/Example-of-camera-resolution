@@ -104,7 +104,9 @@ class _GiftBanner extends StatelessWidget {
     return Align(
       alignment: isTakeover ? Alignment.center : Alignment.centerLeft,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: LiveMetrics.screenPadding),
+        padding: const EdgeInsets.symmetric(
+          horizontal: LiveMetrics.screenPadding,
+        ),
         child: isTakeover ? _Takeover(event: event) : _Banner(event: event),
       ),
     );
@@ -129,7 +131,11 @@ class _Banner extends StatelessWidget {
         gradient: LinearGradient(colors: LiveColors.tierGradient(gift.tier)),
         border: Border.all(color: tint.withValues(alpha: 0.55)),
         boxShadow: <BoxShadow>[
-          BoxShadow(color: tint.withValues(alpha: 0.3), blurRadius: 18, spreadRadius: 1),
+          BoxShadow(
+            color: tint.withValues(alpha: 0.3),
+            blurRadius: 18,
+            spreadRadius: 1,
+          ),
         ],
       ),
       child: Row(
@@ -183,7 +189,11 @@ class _Takeover extends StatelessWidget {
         ),
         border: Border.all(color: tint, width: 1.6),
         boxShadow: <BoxShadow>[
-          BoxShadow(color: tint.withValues(alpha: 0.45), blurRadius: 40, spreadRadius: 4),
+          BoxShadow(
+            color: tint.withValues(alpha: 0.45),
+            blurRadius: 40,
+            spreadRadius: 4,
+          ),
         ],
       ),
       child: Column(
@@ -198,7 +208,10 @@ class _Takeover extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: <Color>[tint.withValues(alpha: .42), Colors.transparent],
+                    colors: <Color>[
+                      tint.withValues(alpha: .42),
+                      Colors.transparent,
+                    ],
                   ),
                 ),
               ),
@@ -207,7 +220,11 @@ class _Takeover extends StatelessWidget {
                   angle: index * .785,
                   child: Transform.translate(
                     offset: const Offset(0, -82),
-                    child: Icon(Icons.auto_awesome, color: tint, size: index.isEven ? 14 : 9),
+                    child: Icon(
+                      Icons.auto_awesome,
+                      color: tint,
+                      size: index.isEven ? 14 : 9,
+                    ),
                   ),
                 ),
               _AnimatedGiftArtwork(gift: gift, size: 138),
@@ -216,7 +233,10 @@ class _Takeover extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             gift.name.toUpperCase(),
-            style: LiveTextStyles.displayLarge.copyWith(color: tint, fontSize: 24),
+            style: LiveTextStyles.displayLarge.copyWith(
+              color: tint,
+              fontSize: 24,
+            ),
           ),
           const SizedBox(height: 6),
           Row(
@@ -226,7 +246,9 @@ class _Takeover extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 event.sender.displayName,
-                style: LiveTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+                style: LiveTextStyles.body.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -269,11 +291,20 @@ class _AnimatedGiftArtworkState extends State<_AnimatedGiftArtwork>
     child: GiftArtwork(gift: widget.gift, size: widget.size),
     builder: (BuildContext context, Widget? child) {
       final double wave = Curves.easeInOut.transform(_controller.value);
-      final bool travels = <String>{'drive', 'fly', 'sail', 'swim'}.contains(widget.gift.animationType);
+      final bool travels = <String>{
+        'drive',
+        'fly',
+        'sail',
+        'swim',
+      }.contains(widget.gift.animationType);
       return Transform.translate(
-        offset: travels ? Offset((wave - .5) * 30, (1 - wave) * 8) : Offset(0, (wave - .5) * 9),
+        offset: travels
+            ? Offset((wave - .5) * 30, (1 - wave) * 8)
+            : Offset(0, (wave - .5) * 9),
         child: Transform.rotate(
-          angle: widget.gift.animationType == 'galaxy' ? _controller.value * .16 : 0,
+          angle: widget.gift.animationType == 'galaxy'
+              ? _controller.value * .16
+              : 0,
           child: Transform.scale(scale: .9 + wave * .16, child: child),
         ),
       );
@@ -312,7 +343,11 @@ class _ComboCounter extends StatelessWidget {
 }
 
 class _SenderAvatar extends StatelessWidget {
-  const _SenderAvatar({required this.sender, required this.tint, this.size = 34});
+  const _SenderAvatar({
+    required this.sender,
+    required this.tint,
+    this.size = 34,
+  });
 
   final UserProfileEntity sender;
   final Color tint;

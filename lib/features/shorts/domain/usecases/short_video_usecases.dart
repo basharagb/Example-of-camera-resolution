@@ -10,11 +10,13 @@ class LoadVideoFeedUseCase {
 class SetVideoLikedUseCase {
   const SetVideoLikedUseCase(this._repository);
   final ShortVideoRepository _repository;
-  Future<ShortVideoEntity> call(String id, bool active) => _repository.setLiked(id, active);
+  Future<ShortVideoEntity> call(String id, bool active) =>
+      _repository.setLiked(id, active);
 }
 
 class SetVideoBookmarkedUseCase {
   const SetVideoBookmarkedUseCase(this._repository);
   final ShortVideoRepository _repository;
-  Future<ShortVideoEntity> call(String id, bool active) => _repository.setBookmarked(id, active);
+  Future<ShortVideoEntity> call(String id, bool active) =>
+      _repository.setBookmarked(id, active);
 }

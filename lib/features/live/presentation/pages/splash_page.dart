@@ -67,7 +67,11 @@ class _SplashPageState extends State<SplashPage> {
               color: LiveColors.live,
               borderRadius: BorderRadius.circular(23),
             ),
-            child: const Icon(Icons.videocam_rounded, size: 38, color: Colors.white),
+            child: const Icon(
+              Icons.videocam_rounded,
+              size: 38,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 22),
           Text('Elite Live', style: LiveTextStyles.displayLarge),
@@ -75,7 +79,10 @@ class _SplashPageState extends State<SplashPage> {
           const SizedBox(
             width: 26,
             height: 26,
-            child: CircularProgressIndicator(strokeWidth: 2.2, color: LiveColors.accent),
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              color: LiveColors.accent,
+            ),
           ),
         ],
       ),
