@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -30,7 +31,7 @@ class QueuedGift {
   final GiftEventEntity event;
 }
 
-class LiveRoomController extends GetxController {
+class LiveRoomController extends GetxController with WidgetsBindingObserver {
   LiveRoomController({
     required this.mode,
     required this.startBroadcast,
@@ -123,6 +124,8 @@ class LiveRoomController extends GetxController {
   /// Taps buffered since the last flush. A viewer can produce dozens a second
   /// and each one must not become a request.
   int _pendingReactions = 0;
+  bool _enteringRoom = false;
+  bool _returningFromSettings = false;
 
   bool get isHost => mode == LiveRoomMode.host;
 
@@ -133,6 +136,7 @@ class LiveRoomController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    WidgetsBinding.instance.addObserver(this);
     _eventsSubscription = eventsClient.events.listen(_onRealtimeEvent);
     _mediaSubscription = mediaEngine.events.listen(_onMediaEvent);
     unawaited(_enterRoom());
@@ -144,6 +148,8 @@ class LiveRoomController extends GetxController {
   // -------------------------------------------------------------------------
 
   Future<void> _enterRoom() async {
+    if (_enteringRoom) return;
+    _enteringRoom = true;
     isConnecting.value = true;
     errorMessage.value = null;
     permissionMessage.value = null;
@@ -151,6 +157,14 @@ class LiveRoomController extends GetxController {
       if (isHost && !await _ensureBroadcastPermissions()) {
         isConnecting.value = false;
         return;
+      }
+
+      // Open the Android camera before any REST or signalling request. The
+      // host sees a real preview immediately and a slow RTC connection can no
+      // longer look like a camera permission failure.
+      if (isHost) {
+        await mediaEngine.startLocalPreview();
+        isVideoReady.value = true;
       }
 
       final LiveRoomSessionEntity room = isHost
@@ -168,12 +182,32 @@ class LiveRoomController extends GetxController {
       _startTimers();
     } on AppFailure catch (failure) {
       errorMessage.value = failure.message;
+      await _cleanupFailedHostRoom();
     } catch (error, stackTrace) {
       debugLog('Failed to enter live room', error, stackTrace);
       errorMessage.value = 'Could not open the live room';
+      await _cleanupFailedHostRoom();
     } finally {
       isConnecting.value = false;
+      _enteringRoom = false;
     }
+  }
+
+  Future<void> _cleanupFailedHostRoom() async {
+    if (!isHost) return;
+    final String? startedId = stream.value?.id;
+    if (startedId != null) {
+      try {
+        await endStream(startedId);
+      } catch (error) {
+        debugLog('Failed room cleanup could not end the server stream', error);
+      }
+    }
+    await mediaEngine.leave();
+    stream.value = null;
+    rtc.value = null;
+    isVideoReady.value = false;
+    isLive.value = false;
   }
 
   void _applyRoom(LiveRoomSessionEntity room) {
@@ -190,28 +224,32 @@ class LiveRoomController extends GetxController {
   /// this refuses to open the room rather than going live with a black frame.
   Future<bool> _ensureBroadcastPermissions() async {
     final PermissionStatusEntity camera = await requestCameraPermission();
-    final PermissionStatusEntity microphone =
-        await requestMicrophonePermission();
-
-    if (camera.isUsable && microphone.isUsable) {
-      return true;
+    if (!camera.isUsable) {
+      permissionNeedsSettings.value = camera.shouldOpenSettings;
+      permissionMessage.value = camera.shouldOpenSettings
+          ? 'Camera access is disabled. Enable Camera in app Settings, then return.'
+          : 'Tap Allow when Android asks for camera access.';
+      return false;
     }
 
-    final bool needsSettings =
-        camera.shouldOpenSettings || microphone.shouldOpenSettings;
-    permissionNeedsSettings.value = needsSettings;
-    permissionMessage.value = needsSettings
-        ? 'Camera and microphone access are turned off for this app. Turn them '
-              'on in Settings to go live.'
-        : 'Going live needs your camera and microphone.';
-    return false;
+    final PermissionStatusEntity microphone = await requestMicrophonePermission();
+    if (!microphone.isUsable) {
+      permissionNeedsSettings.value = microphone.shouldOpenSettings;
+      permissionMessage.value = microphone.shouldOpenSettings
+          ? 'Microphone access is disabled. Enable Microphone in app Settings, then return.'
+          : 'Tap Allow when Android asks for microphone access.';
+      return false;
+    }
+
+    permissionNeedsSettings.value = false;
+    return true;
   }
 
   Future<void> _connectMedia(RtcCredentialsEntity credentials) async {
     if (credentials.isMock) {
       // A mock backend cannot deliver video to viewers, but the host can still
       // frame the shot and exercise camera controls with an on-device preview.
-      if (isHost) {
+      if (isHost && !mediaEngine.isReady) {
         try {
           await mediaEngine.startLocalPreview();
         } catch (error, stackTrace) {
@@ -539,12 +577,33 @@ class LiveRoomController extends GetxController {
     await mediaEngine.switchCamera();
   }
 
-  Future<void> openAppSettings() => openSettings();
+  Future<void> openAppSettings() async {
+    _returningFromSettings = true;
+    await openSettings();
+  }
 
   Future<void> retry() {
     permissionMessage.value = null;
     permissionNeedsSettings.value = false;
     return _enterRoom();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!isHost) return;
+    if (state == AppLifecycleState.resumed) {
+      if (_returningFromSettings && permissionMessage.value != null) {
+        _returningFromSettings = false;
+        unawaited(retry());
+      } else if (isLive.value && isCameraOn.value) {
+        unawaited(mediaEngine.setCameraEnabled(true));
+      }
+      return;
+    }
+    if ((state == AppLifecycleState.inactive || state == AppLifecycleState.paused) &&
+        isLive.value) {
+      unawaited(mediaEngine.setCameraEnabled(false));
+    }
   }
 
   /// Ends the broadcast for everyone. Only meaningful for the host.
@@ -590,6 +649,7 @@ class LiveRoomController extends GetxController {
 
   @override
   void onClose() {
+    WidgetsBinding.instance.removeObserver(this);
     _eventsSubscription?.cancel();
     _mediaSubscription?.cancel();
     _stopTimers();

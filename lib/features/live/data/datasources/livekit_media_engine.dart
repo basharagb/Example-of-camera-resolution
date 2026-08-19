@@ -85,14 +85,22 @@ class LiveKitMediaEngine implements LiveMediaEngine {
     }
 
     try {
-      await participant.setCameraEnabled(
-        true,
-        cameraCaptureOptions: const CameraCaptureOptions(
-          cameraPosition: CameraPosition.front,
-          maxFrameRate: 30,
-          params: VideoParametersPresets.h720_169,
-        ),
-      );
+      final LocalVideoTrack? preview = _previewTrack;
+      if (preview != null) {
+        await participant.publishVideoTrack(preview);
+        // Ownership has moved to the Room. Keeping this field would make
+        // leave() dispose the same track twice.
+        _previewTrack = null;
+      } else {
+        await participant.setCameraEnabled(
+          true,
+          cameraCaptureOptions: const CameraCaptureOptions(
+            cameraPosition: CameraPosition.front,
+            maxFrameRate: 30,
+            params: VideoParametersPresets.h720_169,
+          ),
+        );
+      }
       await participant.setMicrophoneEnabled(true);
       _cameraPosition = CameraPosition.front;
     } catch (error, stackTrace) {
@@ -117,7 +125,7 @@ class LiveKitMediaEngine implements LiveMediaEngine {
       throw const BroadcastFailure('The live video server is not ready');
     }
 
-    await leave();
+    await _disconnectRoom(preservePreview: true);
     final Room room = Room(
       roomOptions: const RoomOptions(adaptiveStream: true, dynacast: true),
     );
@@ -261,9 +269,15 @@ class LiveKitMediaEngine implements LiveMediaEngine {
 
   @override
   Future<void> leave() async {
-    final LocalVideoTrack? preview = _previewTrack;
-    _previewTrack = null;
-    await preview?.dispose();
+    await _disconnectRoom(preservePreview: false);
+  }
+
+  Future<void> _disconnectRoom({required bool preservePreview}) async {
+    if (!preservePreview) {
+      final LocalVideoTrack? preview = _previewTrack;
+      _previewTrack = null;
+      await preview?.dispose();
+    }
 
     final EventsListener<RoomEvent>? listener = _listener;
     _listener = null;
